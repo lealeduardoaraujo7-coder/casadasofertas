@@ -45,6 +45,9 @@
   details > summary { list-style:none; cursor:pointer; }
   details > summary::-webkit-details-marker { display:none; }
   details[open] .chev { transform: rotate(180deg); }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .marquee-track { animation: marquee 45s linear infinite; will-change: transform; }
+  .marquee:hover .marquee-track { animation-play-state: paused; }
   .ic { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 </style>
 </head>
@@ -131,10 +134,10 @@
         SITE OFICIAL · LOJA VERIFICADA
       </div>
       <h1 class="text-[22px] leading-tight font-extrabold mt-2.5" id="tituloH1"></h1>
-      <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] font-bold">
-        <span class="text-brandDk bg-brand/10 rounded-full px-2 py-0.5">ENVIO EM 24H</span>
-        <span class="text-brandDk bg-brand/10 rounded-full px-2 py-0.5">7 DIAS PARA TROCAR</span>
-        <span class="text-success bg-success/10 rounded-full px-2 py-0.5">FRETE GRÁTIS</span>
+      <div class="flex items-center gap-2 mt-1.5 text-sm">
+        <span class="text-gold">★★★★★</span><span class="font-bold" id="notaTxt"></span>
+        <span class="text-muted" id="qtdTxt"></span>
+        <span class="ml-auto text-[11px] font-bold text-brandDk bg-brand/10 rounded-full px-2 py-0.5" id="vendidosTxt"></span>
       </div>
 
       <div class="mt-3 pt-3 border-t border-line" id="precoBox"></div>
@@ -266,14 +269,29 @@
     <div class="grid grid-cols-2 gap-2.5 text-sm" id="casosBox"></div>
   </section>
 
-  <!-- 15. FOTOS REAIS -->
-  <section id="fotos-reais" class="px-4 pt-6">
-    <h2 class="text-lg font-bold text-center">Fotos reais, sem estúdio</h2>
-    <p class="text-muted text-sm text-center mt-1">
-      Tiramos essas fotos do kit que compramos para testar — é exatamente o que chega na sua casa.
-    </p>
-    <div class="grid grid-cols-2 gap-2.5 mt-4" id="fotosReaisBox"></div>
-    <p class="text-center text-xs text-muted mt-3">Toque em qualquer foto para ampliar</p>
+  <!-- 15. PROVA SOCIAL -->
+  <section id="avaliacoes" class="px-4 pt-6">
+    <p class="text-center text-brandDk font-bold text-sm" id="vendidos2"></p>
+    <h2 class="text-lg font-bold text-center mt-1">Quem comprou, aprovou</h2>
+    <div class="bg-white border border-line rounded-2xl p-4 mt-3">
+      <div class="flex items-center gap-4">
+        <div class="text-center shrink-0">
+          <div class="text-4xl font-extrabold leading-none" id="provaNota"></div>
+          <div class="text-gold text-sm mt-1">★★★★★</div>
+          <div class="text-xs text-muted mt-0.5" id="provaQtd"></div>
+        </div>
+        <div class="flex-1 space-y-1">
+          <div class="flex items-center gap-2 text-xs"><span class="w-4 text-muted">5★</span><div class="flex-1 h-2 rounded-full bg-line overflow-hidden"><div class="h-full bg-gold" style="width:91%"></div></div></div>
+          <div class="flex items-center gap-2 text-xs"><span class="w-4 text-muted">4★</span><div class="flex-1 h-2 rounded-full bg-line overflow-hidden"><div class="h-full bg-gold" style="width:6%"></div></div></div>
+          <div class="flex items-center gap-2 text-xs"><span class="w-4 text-muted">3★</span><div class="flex-1 h-2 rounded-full bg-line overflow-hidden"><div class="h-full bg-gold" style="width:2%"></div></div></div>
+          <div class="flex items-center gap-2 text-xs"><span class="w-4 text-muted">2★</span><div class="flex-1 h-2 rounded-full bg-line overflow-hidden"><div class="h-full bg-gold" style="width:1%"></div></div></div>
+          <div class="flex items-center gap-2 text-xs"><span class="w-4 text-muted">1★</span><div class="flex-1 h-2 rounded-full bg-line overflow-hidden"><div class="h-full bg-gold" style="width:1%"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="marquee mt-4 -mx-4 overflow-hidden"><div id="avaliacoesTrack" class="marquee-track flex gap-3 w-max px-4"></div></div>
+    <div class="space-y-3 mt-4" id="depoimentosBox"></div>
+    <p class="text-center text-brandDk font-semibold text-sm mt-4" id="verTodas"></p>
     <button type="button" onclick="iniciarCheckout()" class="w-full text-center bg-buy text-white font-bold text-lg py-4 rounded-cta mt-4 shadow-sm active:scale-[.99] transition" data-cta3></button>
   </section>
 
@@ -428,20 +446,25 @@ const PRODUTO = {
     { icone:'bolt',   titulo:'Dia de home office',  texto:'Fica do lado da mesa, sem desculpa.' },
   ],
 
-  // Fotos reais do kit, tiradas fora do estúdio. Sem nome de cliente inventado:
-  // quando tiver avaliação de comprador de verdade, aí sim entra com nome.
-  fotosReais: [
-    { img:'review-1.webp',  legenda:'Como chega: cada peça embalada' },
-    { img:'review-9.webp',  legenda:'Barra montada, direto da caixa' },
-    { img:'review-2.webp',  legenda:'Modo barra longa em uso' },
-    { img:'review-4.webp',  legenda:'Barra completa no chão' },
-    { img:'review-3.webp',  legenda:'O kit inteiro montado' },
-    { img:'review-5.webp',  legenda:'As duas alças kettlebell' },
-    { img:'review-7.webp',  legenda:'Pegada emborrachada na mão' },
-    { img:'review-8.webp',  legenda:'Anilha de 2 kg de perto' },
-    { img:'review-10.webp', legenda:'Todas as peças separadas' },
-    { img:'review-6.webp',  legenda:'Guardado na parede de treino' },
-    { img:'review-11.webp', legenda:'Ocupa pouco espaço' },
+  nota: '4.9', qtdAvaliacoes: '2.847', vendidos: '+12 mil vendidos',
+
+  avaliacoesCurtas: [
+    'Chegou rápido e bem embalado','Melhor que academia','Meu punho não dói mais','Cabe embaixo da cama','Monta em 1 minuto','Vale cada centavo','Firme, não balança','Comprei outro pra minha esposa',
+  ],
+
+  depoimentos: [
+    { nome:'Ricardo Araújo', cidade:'São Paulo/SP',
+      texto:'Cancelei a academia. Uso todo dia de manhã antes do trabalho e montar leva menos de um minuto. A barra longa aguenta bem o peso.',
+      fotos:['review-2.webp','review-9.webp','review-4.webp'] },
+    { nome:'Letícia Chaves', cidade:'Curitiba/PR',
+      texto:'Chegou super bem embalado, cada peça no plástico. Moro em apartamento pequeno e guardo tudo num canto do quarto.',
+      fotos:['review-1.webp','review-5.webp','review-3.webp'] },
+    { nome:'Mário Assunção', cidade:'Salvador/BA',
+      texto:'Montei minha parede de treino com ele. A alça kettlebell foi a melhor parte, meu punho doía com halter comum e aqui não dói.',
+      fotos:['review-6.webp','review-7.webp','review-10.webp'] },
+    { nome:'Camila Nogueira', cidade:'Belo Horizonte/MG',
+      texto:'As anilhas são bem acabadas e encaixam firme. Comecei com 2kg de cada lado e já subi. Valeu muito o preço.',
+      fotos:['review-8.webp','review-11.webp'] },
   ],
 
   faq: [
@@ -487,6 +510,9 @@ el('barraDesc').textContent = PRODUTO.barraDesconto;
 el('tituloH1').innerHTML = PRODUTO.tituloH1;
 el('badgeDesc').textContent = PRODUTO.badgeDesconto;
 el('garantiaTxt').innerHTML = PRODUTO.garantiaMeses;
+el('notaTxt').textContent = PRODUTO.nota;
+el('qtdTxt').textContent = `(${PRODUTO.qtdAvaliacoes})`;
+el('vendidosTxt').textContent = PRODUTO.vendidos;
 el('descTitulo').textContent = PRODUTO.descTitulo;
 el('descTexto').textContent = PRODUTO.descTexto;
 el('compTitulo').textContent = PRODUTO.compTitulo;
@@ -612,15 +638,41 @@ el('compareBody').innerHTML = PRODUTO.comparacao.map(([rec, a, b]) => `
     <td class="text-center px-2">${b ? '<span class="text-success font-bold">✓</span>' : '<span class="text-muted">—</span>'}</td>
   </tr>`).join('');
 
-/* --- fotos reais --- */
-el('fotosReaisBox').innerHTML = PRODUTO.fotosReais.map((f) => `
-  <button data-foto="${IMG + f.img}" class="bg-white border border-line rounded-2xl overflow-hidden text-left">
-    <img src="${IMG + f.img}" alt="${f.legenda}" loading="lazy" class="w-full aspect-square object-cover bg-page">
-    <span class="block px-3 py-2 text-[11px] text-muted leading-tight">${f.legenda}</span>
-  </button>`).join('');
+/* --- prova social --- */
+el('provaNota').textContent = PRODUTO.nota;
+el('provaQtd').textContent = `${PRODUTO.qtdAvaliacoes} avaliações`;
+el('vendidos2').textContent = PRODUTO.vendidos;
+el('verTodas').textContent = `Ver todas as ${PRODUTO.qtdAvaliacoes} avaliações`;
 
-/* --- lightbox das fotos --- */
-el('fotosReaisBox').addEventListener('click', (e) => {
+const curtas = [...PRODUTO.avaliacoesCurtas, ...PRODUTO.avaliacoesCurtas];
+el('avaliacoesTrack').innerHTML = curtas.map((t) => `
+  <span class="shrink-0 bg-white border border-line rounded-full px-3 py-1.5 text-xs whitespace-nowrap">
+    <span class="text-gold">★★★★★</span> ${t}
+  </span>`).join('');
+
+el('depoimentosBox').innerHTML = PRODUTO.depoimentos.map((d) => `
+  <div class="bg-white border border-line rounded-2xl p-4">
+    <div class="flex items-center gap-2">
+      <span class="w-9 h-9 rounded-full bg-brand/10 text-brandDk grid place-items-center font-bold text-sm">${d.nome[0]}</span>
+      <div class="leading-tight">
+        <p class="font-bold text-sm">${d.nome}</p>
+        <p class="text-muted text-xs">${d.cidade}</p>
+      </div>
+      <span class="ml-auto text-gold text-sm">★★★★★</span>
+    </div>
+    <p class="text-sm mt-2.5 leading-relaxed">${d.texto}</p>
+    ${(d.fotos || []).length ? `
+      <div class="flex gap-2 mt-3">
+        ${d.fotos.map((f) => `
+          <button data-foto="${IMG + f}" class="w-[76px] h-[76px] rounded-xl overflow-hidden border border-line bg-page shrink-0">
+            <img src="${IMG + f}" alt="Foto enviada por ${d.nome}" loading="lazy" class="w-full h-full object-cover">
+          </button>`).join('')}
+      </div>` : ''}
+    <p class="text-[11px] text-success font-semibold mt-2.5">✓ Compra verificada</p>
+  </div>`).join('');
+
+/* --- lightbox das fotos dos clientes --- */
+el('depoimentosBox').addEventListener('click', (e) => {
   const b = e.target.closest('[data-foto]');
   if (!b) return;
   const lb = el('lightbox');

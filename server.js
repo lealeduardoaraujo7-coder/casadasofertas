@@ -7,8 +7,8 @@ const { criarPix, cobrarCartao, consultarPago, statusPago, modoSimulado } = requ
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PRECO = Number(process.env.PRODUCT_PRICE || 89.9);
-const VALOR_CENTAVOS = Math.round(PRECO * 100);
+const PRECO = Number(process.env.PRODUCT_PRICE || 89.9); // a AmploPay cobra em REAIS
+const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
 // esse /tmp é temporário (some quando a função hiberna). Por isso mantemos um
 // cache em memória junto — e a confirmação real do pagamento sempre vem da
@@ -119,11 +119,11 @@ app.post('/api/pedidos', async (req, res) => {
 
   const pedidoId = gerarId();
   const base = {
-    valorCentavos: VALOR_CENTAVOS,
-    descricao: 'Kit Halteres Ajustavel 6 em 1',
+    valor: PRECO,
+    descricao: DESCRICAO,
     cliente: c,
     referencia: pedidoId,
-    webhookUrl: process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/api/webhook/amplopay` : null,
+    callbackUrl: process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/api/webhook/amplopay` : null,
   };
 
   // O pedido é gravado sem NENHUM dado de cartão — só os 4 últimos dígitos.
@@ -187,17 +187,24 @@ app.get('/api/pedidos/:id/status', async (req, res) => {
   const pedido = pedidos[req.params.id];
   if (!pedido) return res.status(404).json({ erro: 'Pedido não encontrado.' });
 
-  if (!pedido.pago) {
+  // O checkout pergunta a cada 5s, mas a AmploPay pede para não fazer polling
+  // frequente na API deles (a confirmação boa chega pelo callbackUrl). Então
+  // consultamos o gateway no máximo uma vez a cada 20 segundos por pedido.
+  const INTERVALO_CONSULTA = 20000;
+  const agora = Date.now();
+
+  if (!pedido.pago && agora - (pedido.consultadoEm || 0) > INTERVALO_CONSULTA) {
+    pedido.consultadoEm = agora;
     try {
       if (await consultarPago(pedido.transacaoId)) {
         pedido.pago = true;
         pedido.pagoEm = new Date().toISOString();
-        salvarPedidos(pedidos);
         console.log(`[pago] ${pedido.pedidoId} — ${pedido.cliente.nome}`);
       }
     } catch (e) {
       console.error('[erro ao consultar status]', e.message);
     }
+    salvarPedidos(pedidos);
   }
 
   res.json({ pago: pedido.pago });
@@ -208,9 +215,12 @@ app.post('/api/webhook/amplopay', (req, res) => {
   const corpo = req.body || {};
   console.log('[webhook amplopay]', JSON.stringify(corpo));
 
-  const status = corpo.status || corpo.data?.status;
-  const ref = corpo.externalRef || corpo.data?.externalRef || corpo.external_ref;
-  const transacaoId = corpo.id || corpo.data?.id || corpo.transactionId;
+  // Campos da AmploPay: id / clientIdentifier / status (PENDING, COMPLETED,
+  // FAILED, REFUNDED, CHARGED_BACK). Aceitamos também o formato aninhado.
+  const dados = corpo.data || corpo;
+  const status = dados.status;
+  const ref = dados.clientIdentifier || dados.identifier;
+  const transacaoId = dados.id || dados.transactionId;
 
   const pedidos = lerPedidos();
   const pedido = pedidos[ref] || Object.values(pedidos).find((p) => p.transacaoId === transacaoId);
