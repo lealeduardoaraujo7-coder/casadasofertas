@@ -8,7 +8,7 @@ const etapas = {
   ok: $('etapaOk'),
 };
 
-const PRECO = 89.90;
+const PRECO = 68.90;
 const MAX_PARCELAS = 10;
 
 let dadosCliente = null;

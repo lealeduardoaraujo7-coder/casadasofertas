@@ -7,7 +7,7 @@ const { criarPix, cobrarCartao, consultarPago, statusPago, modoSimulado } = requ
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PRECO = Number(process.env.PRODUCT_PRICE || 89.9); // a AmploPay cobra em REAIS
+const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a AmploPay cobra em REAIS
 const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
 // esse /tmp é temporário (some quando a função hiberna). Por isso mantemos um
