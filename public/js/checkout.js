@@ -162,6 +162,7 @@ document.querySelectorAll('.ck-metodo').forEach((btn) => {
     $('painelPix').hidden = metodo !== 'pix';
     $('painelCartao').hidden = metodo !== 'cartao';
     $('erroPagamento').hidden = true;
+    rastrear.escolherPagamento(metodo);
   });
 });
 
@@ -229,7 +230,12 @@ $('btnFinalizar').addEventListener('click', async () => {
     const r = await fetch('/api/pedidos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cliente: dadosCliente, pagamento }),
+      body: JSON.stringify({
+        cliente: dadosCliente,
+        pagamento,
+        // origem da campanha, para conferir a atribuição depois
+        utms: JSON.parse(sessionStorage.getItem('utms') || '{}'),
+      }),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.erro || 'Não foi possível concluir o pagamento.');
@@ -239,6 +245,7 @@ $('btnFinalizar').addEventListener('click', async () => {
     etapas.pagamento.hidden = true;
 
     if (d.aprovado) {
+      rastrear.comprar(pedidoId);
       etapas.ok.hidden = false;
     } else {
       $('idPedido').textContent = d.pedidoId;
@@ -276,6 +283,7 @@ function iniciarPolling() {
       const d = await r.json();
       if (d.pago) {
         clearInterval(poll);
+        rastrear.comprar(pedidoId);
         etapas.pix.hidden = true;
         etapas.ok.hidden = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });

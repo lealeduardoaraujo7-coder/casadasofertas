@@ -23,6 +23,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="/js/tracking.js"></script>
 <script>
   /* ===== DESIGN TOKENS — paleta Casa das Ofertas =====
      brand   = vermelho da marca (#D32F2F)
@@ -686,7 +687,10 @@ new IntersectionObserver(([e]) => {
 }, { rootMargin: '-80px 0px 0px 0px' }).observe(alvo);
 
 /* --- checkout próprio --- */
+rastrear.verProduto();
+
 function iniciarCheckout() {
+  rastrear.iniciarCheckout();
   location.href = '/checkout.html';
 }
 </script>

@@ -134,6 +134,7 @@ app.post('/api/pedidos', async (req, res) => {
       cliente: c,
       valor: PRECO,
       metodo: pagamento.metodo,
+      utms: req.body?.utms || {},
       criadoEm: new Date().toISOString(),
       ...extra,
     };
