@@ -66,9 +66,8 @@
     <button id="menuBtn" aria-label="Menu" class="p-1 text-brand">
       <svg viewBox="0 0 24 24" class="ic w-6 h-6" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
-    <a href="/" class="flex items-center gap-1.5" aria-label="início">
-      <span class="w-8 h-8 rounded-lg bg-brand text-white grid place-items-center font-extrabold text-[13px]">CO</span>
-      <span class="font-extrabold text-xl tracking-tight text-ink">Casa das <span class="text-brand">Ofertas</span></span>
+    <a href="/" class="flex items-center" aria-label="Casa das Ofertas — início">
+      <img src="/img/logo.png" alt="Casa das Ofertas" class="h-11 w-auto">
     </a>
     <div class="flex items-center gap-3 text-brand">
       <svg viewBox="0 0 24 24" class="ic w-6 h-6"><path d="M3 6h13v9H3z"/><path d="M16 9h4l1 3v3h-5z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
@@ -83,7 +82,7 @@
   <nav class="absolute top-0 left-1/2 -translate-x-1/2 h-full w-full max-w-[480px] bg-white shadow-xl flex flex-col">
     <div class="relative bg-brandDk text-white text-center px-6 pt-6 pb-5">
       <button data-close aria-label="Fechar" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-lg leading-none">✕</button>
-      <div class="font-extrabold text-2xl tracking-tight" data-marca></div>
+      <img src="/img/logo.png" alt="Casa das Ofertas" class="h-20 w-auto mx-auto">
       <p class="text-white/80 text-sm mt-1">Loja oficial</p>
     </div>
     <div class="flex-1 overflow-y-auto px-5 py-3">
@@ -287,9 +286,8 @@
 
 <!-- 17. FOOTER -->
 <footer class="max-w-[480px] mx-auto bg-white border-t border-line mt-8 px-4 py-8 text-sm">
-  <div class="flex items-center gap-1.5 mb-5">
-    <span class="w-7 h-7 rounded-lg bg-brand text-white grid place-items-center font-extrabold text-[12px]">CO</span>
-    <span class="font-extrabold text-lg tracking-tight text-ink">Casa das <span class="text-brand">Ofertas</span></span>
+  <div class="mb-5">
+    <img src="/img/logo.png" alt="Casa das Ofertas" class="h-14 w-auto">
   </div>
   <div class="mb-4">
     <p class="font-bold text-xs tracking-wide text-muted mb-1">ATENDIMENTO AO CLIENTE</p>
@@ -356,11 +354,11 @@ const PRODUTO = {
   // Os arquivos foram enviados em ordem invertida (o 1 tem o conteúdo do 7 e
   // assim por diante). A lista abaixo já está na ordem visual correta.
   galeria: [
+    'produto-1.webp', // halteres + kettlebell + barras  <- abre a página
     'produto-4.webp', // kit completo em fundo branco
     'produto-7.webp', // mulher na flexão
     'produto-6.webp', // 3 modos de kettlebell
     'produto-5.webp', // haltere para barra
-    'produto-1.webp', // halteres + kettlebell + barras
     'produto-3.webp', // treinamento muscular
     'produto-2.webp', // homem com a anilha de 2 kg
   ],
