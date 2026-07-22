@@ -17,6 +17,10 @@ let poll = null;
 
 const so = (v) => v.replace(/\D/g, '');
 
+// Chegou no checkout: esse é o momento seguro para o evento, com a página
+// já carregada e sem navegação em curso para cortar a requisição.
+rastrear.iniciarCheckout();
+
 /* ---------- Máscaras ---------- */
 function mascara(input, fn) {
   input.addEventListener('input', () => { input.value = fn(input.value); });
@@ -117,6 +121,7 @@ $('formDados').addEventListener('submit', (e) => {
   etapas.dados.hidden = true;
   etapas.pagamento.hidden = false;
   $('passo2').classList.add('ativo');
+  rastrear.escolherPagamento('pix');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 

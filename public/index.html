@@ -672,7 +672,8 @@ new IntersectionObserver(([e]) => {
 rastrear.verProduto();
 
 function iniciarCheckout() {
-  rastrear.iniciarCheckout();
+  // O InitiateCheckout é disparado na página de checkout, não aqui: se
+  // disparasse no clique, a navegação cortaria a requisição do pixel.
   location.href = '/checkout.html';
 }
 </script>
