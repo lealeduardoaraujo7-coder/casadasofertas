@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Enviar imagens · Casa das Ofertas</title>
+<meta name="robots" content="noindex" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{ background:#FAF7F6; color:#221F1F; font-family:system-ui,-apple-system,'Segoe UI',sans-serif }
+  .slot.tem{ border-color:#16A34A; background:#F2FBF5 }
+  .slot.enviando{ opacity:.5 }
+</style>
+</head>
+<body class="p-5">
+
+<div class="max-w-[900px] mx-auto">
+  <h1 class="text-2xl font-extrabold">Enviar imagens do produto</h1>
+  <p class="text-[#6F6664] mt-1 text-sm">
+    Arraste cada foto para o quadro certo, ou clique no quadro para escolher o arquivo.
+    O nome e a extensão são ajustados automaticamente — não precisa renomear nada.
+  </p>
+
+  <div id="aviso" class="hidden mt-4 rounded-xl border px-4 py-3 text-sm"></div>
+
+  <h2 class="font-bold mt-7 mb-2">Fotos do produto <span class="font-normal text-[#6F6664] text-sm">— catálogo, aparecem na galeria</span></h2>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="gradeProduto"></div>
+
+  <h2 class="font-bold mt-8 mb-2">Fotos dos clientes <span class="font-normal text-[#6F6664] text-sm">— aparecem nos depoimentos</span></h2>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="gradeReview"></div>
+
+  <div class="mt-8 bg-white border border-[#EFE4E2] rounded-2xl p-4 text-sm">
+    <p class="font-bold mb-1">Quando terminar</p>
+    <p class="text-[#6F6664]">As imagens ficam salvas no seu computador. Para elas aparecerem no site publicado, rode:</p>
+    <pre class="bg-[#F5F3F2] rounded-xl p-3 mt-2 text-[12px] overflow-x-auto">cd C:\Users\leale\casa-das-ofertas
+git add public/img
+git commit -m "fotos do produto e dos clientes"
+git push</pre>
+  </div>
+</div>
+
+<script>
+const SLOTS_PRODUTO = [
+  ['produto-1','Mulher na flexão ("Empurre o suporte")'],
+  ['produto-2','"Haltere para Kettlebell" — 3 modos'],
+  ['produto-3','"Haltere para barra" — leve/pesado'],
+  ['produto-4','Kit completo em fundo branco'],
+  ['produto-5','"Treinamento muscular"'],
+  ['produto-6','Homem com o haltere (anilha 2KG)'],
+  ['produto-7','Halteres + kettlebell + barras'],
+];
+const SLOTS_REVIEW = [
+  ['review-1','Caixa aberta com as peças'],
+  ['review-2','Homem de camiseta preta com a barra'],
+  ['review-3','Kit no chão (kettlebell + halteres)'],
+  ['review-4','Barra longa montada no piso'],
+  ['review-5','Duas alças kettlebell na mesa'],
+  ['review-6','Parede com os equipamentos'],
+  ['review-7','Mão segurando o halter'],
+  ['review-8','Anilha de 2KG na mão'],
+  ['review-9','Barra montada no sofá'],
+  ['review-10','Halteres e anilhas na cama'],
+  ['review-11','Parede de equipamentos (vertical)'],
+];
+
+const aviso = (texto, ok) => {
+  const a = document.getElementById('aviso');
+  a.textContent = texto;
+  a.className = `mt-4 rounded-xl border px-4 py-3 text-sm ${ok
+    ? 'bg-[#F2FBF5] border-[#B6E4C6] text-[#0D7A3D]'
+    : 'bg-[#FFF1F1] border-[#F4A9A9] text-[#9B1C1C]'}`;
+};
+
+function montar(grade, slots) {
+  document.getElementById(grade).innerHTML = slots.map(([nome, desc]) => `
+    <label class="slot cursor-pointer border-2 border-dashed border-[#EFE4E2] bg-white rounded-2xl p-2 flex flex-col" data-nome="${nome}">
+      <div class="aspect-square rounded-xl bg-[#FAF7F6] grid place-items-center overflow-hidden" data-preview>
+        <span class="text-[11px] text-[#B3ABA9] px-2 text-center">clique ou arraste</span>
+      </div>
+      <p class="font-bold text-[12px] mt-2">${nome}</p>
+      <p class="text-[11px] text-[#6F6664] leading-tight">${desc}</p>
+      <input type="file" accept="image/*" class="hidden">
+    </label>`).join('');
+}
+montar('gradeProduto', SLOTS_PRODUTO);
+montar('gradeReview', SLOTS_REVIEW);
+
+async function enviar(slot, arquivo) {
+  if (!arquivo || !arquivo.type.startsWith('image/')) return aviso('Isso não parece uma imagem.', false);
+  const nome = slot.dataset.nome;
+  slot.classList.add('enviando');
+
+  const dataUrl = await new Promise((ok) => {
+    const r = new FileReader();
+    r.onload = () => ok(r.result);
+    r.readAsDataURL(arquivo);
+  });
+
+  try {
+    const resp = await fetch('/api/admin/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, dataUrl }),
+    });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.erro || 'falha no envio');
+
+    slot.querySelector('[data-preview]').innerHTML =
+      `<img src="${d.caminho}?t=${Date.now()}" class="w-full h-full object-contain">`;
+    slot.classList.add('tem');
+    aviso(`${d.arquivo} salvo.`, true);
+  } catch (e) {
+    aviso(`Erro ao salvar ${nome}: ${e.message}`, false);
+  } finally {
+    slot.classList.remove('enviando');
+  }
+}
+
+document.addEventListener('change', (e) => {
+  const slot = e.target.closest('.slot');
+  if (slot && e.target.files?.[0]) enviar(slot, e.target.files[0]);
+});
+document.addEventListener('dragover', (e) => { if (e.target.closest('.slot')) e.preventDefault(); });
+document.addEventListener('drop', (e) => {
+  const slot = e.target.closest('.slot');
+  if (!slot) return;
+  e.preventDefault();
+  enviar(slot, e.dataTransfer.files[0]);
+});
+
+// Mostra o que já existe na pasta
+fetch('/api/admin/imagens').then((r) => r.json()).then((d) => {
+  (d.arquivos || []).forEach((a) => {
+    const slot = document.querySelector(`.slot[data-nome="${a.nome}"]`);
+    if (!slot) return;
+    slot.querySelector('[data-preview]').innerHTML =
+      `<img src="/img/${a.arquivo}?t=${Date.now()}" class="w-full h-full object-contain">`;
+    slot.classList.add('tem');
+  });
+}).catch(() => {});
+</script>
+</body>
+</html>

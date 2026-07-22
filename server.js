@@ -20,8 +20,71 @@ const ARQUIVO_PEDIDOS = NA_VERCEL
 
 let cache = null;
 
-app.use(express.json());
+app.use(express.json({ limit: '30mb' })); // as fotos chegam em base64 no upload
 app.use(express.static(path.join(__dirname, 'public')));
+
+/* ---------- Imagem em outro formato ----------
+   As páginas pedem /img/produto-1.jpg. Se o arquivo salvo for .png ou .webp,
+   servimos ele mesmo assim, em vez de devolver 404.                        */
+app.get('/img/:arquivo', (req, res, next) => {
+  const base = path.parse(req.params.arquivo).name;
+  if (!/^[\w-]+$/.test(base)) return next();
+  try {
+    const achado = fs.readdirSync(path.join(__dirname, 'public', 'img'))
+      .find((a) => path.parse(a).name === base);
+    if (achado) return res.sendFile(path.join(__dirname, 'public', 'img', achado));
+  } catch { /* pasta não existe ainda */ }
+  next();
+});
+
+/* ---------- Painel de upload de imagens (só na sua máquina) ----------
+   Fica disponível apenas rodando local: na Vercel o disco é somente-leitura
+   e qualquer arquivo enviado sumiria na próxima requisição. Por isso as
+   imagens são gravadas aqui e vão pro site pelo git push.               */
+const PASTA_IMG = path.join(__dirname, 'public', 'img');
+const NOMES_VALIDOS = /^(produto-[1-7]|review-([1-9]|1[01]))$/;
+const EXTENSOES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
+
+function apenasLocal(req, res, next) {
+  if (NA_VERCEL) return res.status(403).json({ erro: 'O envio de imagens só funciona rodando o site na sua máquina.' });
+  const ip = req.ip || '';
+  if (!/^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(ip)) {
+    return res.status(403).json({ erro: 'Disponível apenas em localhost.' });
+  }
+  next();
+}
+
+app.get('/api/admin/imagens', apenasLocal, (req, res) => {
+  let arquivos = [];
+  try {
+    arquivos = fs.readdirSync(PASTA_IMG)
+      .filter((a) => NOMES_VALIDOS.test(path.parse(a).name))
+      .map((a) => ({ nome: path.parse(a).name, arquivo: a }));
+  } catch { /* pasta ainda não existe */ }
+  res.json({ arquivos });
+});
+
+app.post('/api/admin/upload', apenasLocal, (req, res) => {
+  const { nome, dataUrl } = req.body || {};
+  if (!NOMES_VALIDOS.test(nome || '')) return res.status(400).json({ erro: 'Nome de imagem não reconhecido.' });
+
+  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
+  if (!m) return res.status(400).json({ erro: 'Arquivo inválido.' });
+
+  const ext = EXTENSOES[m[1]];
+  if (!ext) return res.status(400).json({ erro: `Formato ${m[1]} não suportado. Use JPG, PNG ou WebP.` });
+
+  fs.mkdirSync(PASTA_IMG, { recursive: true });
+  // Apaga versões antigas do mesmo slot para não ficar produto-1.jpg e produto-1.png juntos
+  for (const antigo of fs.readdirSync(PASTA_IMG)) {
+    if (path.parse(antigo).name === nome) fs.unlinkSync(path.join(PASTA_IMG, antigo));
+  }
+
+  const arquivo = nome + ext;
+  fs.writeFileSync(path.join(PASTA_IMG, arquivo), Buffer.from(m[2], 'base64'));
+  console.log(`[upload] ${arquivo} salvo`);
+  res.json({ arquivo, caminho: `/img/${arquivo}` });
+});
 
 /* ---------- "Banco de dados" simples ---------- */
 function lerPedidos() {
