@@ -16,7 +16,7 @@
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Kit Halteres Ajustável 6 em 1" />
 <meta property="og:description" content="Halter, barra e kettlebell num kit só. Monte sua academia em casa." />
-<meta property="og:image" content="/img/produto-4.jpg" />
+<meta property="og:image" content="/img/produto-4.webp" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -353,7 +353,17 @@ const PRODUTO = {
     obs: 'A carga selecionada aqui é a que vai na sua caixa.',
   },
 
-  galeria: ['produto-4.jpg','produto-1.jpg','produto-2.jpg','produto-3.jpg','produto-7.jpg','produto-5.jpg','produto-6.jpg'],
+  // Os arquivos foram enviados em ordem invertida (o 1 tem o conteúdo do 7 e
+  // assim por diante). A lista abaixo já está na ordem visual correta.
+  galeria: [
+    'produto-4.webp', // kit completo em fundo branco
+    'produto-7.webp', // mulher na flexão
+    'produto-6.webp', // 3 modos de kettlebell
+    'produto-5.webp', // haltere para barra
+    'produto-1.webp', // halteres + kettlebell + barras
+    'produto-3.webp', // treinamento muscular
+    'produto-2.webp', // homem com a anilha de 2 kg
+  ],
 
   beneficios: [
     { icone:'home',   titulo:'Academia em casa',    texto:'Treino de força completo na sala, sem mensalidade.' },
@@ -380,10 +390,10 @@ const PRODUTO = {
   ],
 
   infograficos: [
-    { img:'produto-1.jpg', titulo:'Apoio de flexão', texto:'A alça kettlebell vira apoio: o punho fica reto e a base de borracha não desliza nem risca o chão.' },
-    { img:'produto-2.jpg', titulo:'3 modos de kettlebell', texto:'Encaixe a alça no conjunto de anilhas e faça swing, agachamento e desenvolvimento de ombro.' },
-    { img:'produto-3.jpg', titulo:'Vira barra longa', texto:'O conector une as duas barras curtas. Peso leve para começar, peso pesado quando evoluir.' },
-    { img:'produto-5.jpg', titulo:'Corpo todo', texto:'Bíceps, dorsal, peitoral e abdômen — dá para treinar tudo com o mesmo kit.' },
+    { img:'produto-7.webp', titulo:'Apoio de flexão', texto:'A alça kettlebell vira apoio: o punho fica reto e a base de borracha não desliza nem risca o chão.' },
+    { img:'produto-6.webp', titulo:'3 modos de kettlebell', texto:'Encaixe a alça no conjunto de anilhas e faça swing, agachamento e desenvolvimento de ombro.' },
+    { img:'produto-5.webp', titulo:'Vira barra longa', texto:'O conector une as duas barras curtas. Peso leve para começar, peso pesado quando evoluir.' },
+    { img:'produto-3.webp', titulo:'Corpo todo', texto:'Bíceps, dorsal, peitoral e abdômen — dá para treinar tudo com o mesmo kit.' },
   ],
 
   specs: [
@@ -423,17 +433,17 @@ const PRODUTO = {
   // Fotos reais do kit, tiradas fora do estúdio. Sem nome de cliente inventado:
   // quando tiver avaliação de comprador de verdade, aí sim entra com nome.
   fotosReais: [
-    { img:'review-1.jpg',  legenda:'Como chega: cada peça embalada' },
-    { img:'review-9.jpg',  legenda:'Barra montada, direto da caixa' },
-    { img:'review-2.jpg',  legenda:'Modo barra longa em uso' },
-    { img:'review-4.jpg',  legenda:'Barra completa no chão' },
-    { img:'review-3.jpg',  legenda:'O kit inteiro montado' },
-    { img:'review-5.jpg',  legenda:'As duas alças kettlebell' },
-    { img:'review-7.jpg',  legenda:'Pegada emborrachada na mão' },
-    { img:'review-8.jpg',  legenda:'Anilha de 2 kg de perto' },
-    { img:'review-10.jpg', legenda:'Todas as peças separadas' },
-    { img:'review-6.jpg',  legenda:'Guardado na parede de treino' },
-    { img:'review-11.jpg', legenda:'Ocupa pouco espaço' },
+    { img:'review-1.webp',  legenda:'Como chega: cada peça embalada' },
+    { img:'review-9.webp',  legenda:'Barra montada, direto da caixa' },
+    { img:'review-2.webp',  legenda:'Modo barra longa em uso' },
+    { img:'review-4.webp',  legenda:'Barra completa no chão' },
+    { img:'review-3.webp',  legenda:'O kit inteiro montado' },
+    { img:'review-5.webp',  legenda:'As duas alças kettlebell' },
+    { img:'review-7.webp',  legenda:'Pegada emborrachada na mão' },
+    { img:'review-8.webp',  legenda:'Anilha de 2 kg de perto' },
+    { img:'review-10.webp', legenda:'Todas as peças separadas' },
+    { img:'review-6.webp',  legenda:'Guardado na parede de treino' },
+    { img:'review-11.webp', legenda:'Ocupa pouco espaço' },
   ],
 
   faq: [
