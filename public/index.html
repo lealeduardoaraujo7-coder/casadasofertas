@@ -320,11 +320,8 @@
     <span class="text-brand shrink-0 mt-0.5"><svg viewBox="0 0 24 24" class="ic w-4 h-4"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span>
     <p class="text-muted"><b class="text-ink">Este é o site oficial da Casa das Ofertas.</b> Só vendemos por aqui. Desconfie de outras lojas ou perfis com nosso nome e preços diferentes, pode ser golpe.</p>
   </div>
-  <!-- Espaço para os selos oficiais (Site Blindado / SSL) — cole aqui o script que cada empresa fornece -->
-  <div class="mt-5 flex gap-2 justify-center" id="selosBox">
-    <div class="flex-1 h-14 grid place-items-center border border-dashed border-line rounded-xl text-[10px] text-muted">Selo Site Blindado</div>
-    <div class="flex-1 h-14 grid place-items-center border border-dashed border-line rounded-xl text-[10px] text-muted">Selo SSL</div>
-  </div>
+  <!-- Espaço para os selos oficiais (Site Blindado / SSL): cole aqui o script
+       que cada empresa fornece quando você contratar. -->
   <div class="mt-5 text-xs text-muted" id="empresaBox"></div>
 </footer>
 
@@ -351,8 +348,9 @@ const IMG = '/img/';
 const PRODUTO = {
   marca: 'Casa das Ofertas',
   email: 'contato@casadasofertas.com.br',
-  // [PREENCHER] razão social + endereço + CNPJ (exigido pelo Decreto 7.962/2013)
-  empresa: '[PREENCHER] Razão Social LTDA · CNPJ 00.000.000/0001-00 · Endereço completo',
+  // Razão social + CNPJ + endereço. Exigido pelo Decreto 7.962/2013 em site de
+  // venda. Deixe preenchido antes de rodar anúncio.
+  empresa: '',
 
   barraFrete: 'FRETE GRÁTIS Brasil',
   barraDesconto: '65% OFF hoje',
