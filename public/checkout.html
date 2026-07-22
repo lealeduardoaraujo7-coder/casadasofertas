@@ -141,44 +141,14 @@
   <div class="bg-white border border-line rounded-2xl p-4 mb-3" id="etapaPagamento" hidden>
     <h2 class="font-bold text-lg mb-3">Forma de pagamento</h2>
 
-    <div class="grid grid-cols-2 gap-2.5 mb-4">
-      <button type="button" data-metodo="pix" class="ck-metodo selecionado rounded-xl p-3 text-left flex items-center gap-2.5">
-        <svg viewBox="0 0 24 24" class="ic w-5 h-5 text-muted"><path d="M13 3L5 13.5h5.5L11 21l8-10.5h-5.5z"/></svg>
-        <span class="leading-tight"><b class="block text-sm">Pix</b><small class="block text-muted text-[11px]">Aprovação imediata</small></span>
-      </button>
-      <button type="button" data-metodo="cartao" class="ck-metodo rounded-xl p-3 text-left flex items-center gap-2.5">
-        <svg viewBox="0 0 24 24" class="ic w-5 h-5 text-muted"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M6.5 14.5h3"/></svg>
-        <span class="leading-tight"><b class="block text-sm">Cartão</b><small class="block text-muted text-[11px]">Em até 10x</small></span>
-      </button>
+    <div class="ck-metodo selecionado rounded-xl p-3 flex items-center gap-2.5 mb-4">
+      <svg viewBox="0 0 24 24" class="ic w-5 h-5"><path d="M13 3L5 13.5h5.5L11 21l8-10.5h-5.5z"/></svg>
+      <span class="leading-tight"><b class="block text-sm">Pix</b><small class="block text-muted text-[11px]">Aprovação imediata</small></span>
+      <span class="ml-auto text-[11px] font-bold text-success">SELECIONADO</span>
     </div>
 
-    <!-- painel PIX -->
     <div id="painelPix" class="border-t border-line pt-4">
       <p class="text-muted text-sm">Ao finalizar, geramos o código Pix. O pedido é liberado assim que o pagamento cair — normalmente em segundos.</p>
-    </div>
-
-    <!-- painel CARTÃO -->
-    <div id="painelCartao" class="border-t border-line pt-4" hidden>
-      <label class="rot">Número do cartão
-        <span class="relative block">
-          <input type="text" id="numeroCartao" class="campo" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number">
-          <em class="absolute right-3 top-1/2 -translate-y-1/2 not-italic text-[11px] font-extrabold text-muted" id="bandeiraDetectada"></em>
-        </span>
-      </label>
-      <label class="rot">Nome impresso no cartão
-        <input type="text" id="nomeCartao" class="campo" placeholder="COMO ESTÁ NO CARTÃO" autocomplete="cc-name">
-      </label>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="rot">Validade
-          <input type="text" id="validadeCartao" class="campo" inputmode="numeric" placeholder="MM/AA" autocomplete="cc-exp">
-        </label>
-        <label class="rot">CVV
-          <input type="text" id="cvvCartao" class="campo" inputmode="numeric" placeholder="000" autocomplete="cc-csc">
-        </label>
-      </div>
-      <label class="rot">Parcelamento
-        <select id="parcelas" class="campo"></select>
-      </label>
     </div>
 
     <div class="flex justify-between items-center border-t border-line pt-3 mt-4 mb-4">
@@ -190,24 +160,12 @@
     <button id="btnFinalizar" class="w-full bg-buy text-white font-bold text-lg py-4 rounded-cta shadow-sm active:scale-[.99] transition">FINALIZAR COMPRA</button>
     <button id="btnVoltar" class="w-full text-muted text-[13px] mt-3">← Voltar e corrigir meus dados</button>
 
-    <div class="mt-5 pt-4 border-t border-line">
-      <p class="text-center text-[11px] font-semibold text-muted mb-2.5">Bandeiras aceitas</p>
-      <div class="flex flex-wrap justify-center items-center gap-1.5">
-        <span class="inline-flex items-center gap-1 bg-white border border-line rounded-md px-2 h-7">
-          <svg viewBox="0 0 24 24" class="w-4 h-4"><path d="M8.6 3.9a2.4 2.4 0 0 1 3.4 0l2.6 2.6a1.5 1.5 0 0 0 1.1.4h.8l-3.4 3.4a1.5 1.5 0 0 1-2.2 0L8.3 7.7a1.5 1.5 0 0 0-1.1-.4H6.4zM3.9 8.6a2.4 2.4 0 0 0 0 3.4l2.6 2.6h.8a1.5 1.5 0 0 0 1.1-.5l2.6-2.6a1.5 1.5 0 0 0 0-2.2L8.3 6.7a1.5 1.5 0 0 0-1.1-.4" fill="#32BCAD"/><path d="M15.4 20.1a2.4 2.4 0 0 1-3.4 0l-2.6-2.6h.8a1.5 1.5 0 0 1 1.1.4l2.6 2.6a1.5 1.5 0 0 0 1.1.4zM20.1 15.4a2.4 2.4 0 0 0 0-3.4l-2.6-2.6h-.8a1.5 1.5 0 0 0-1.1.4l-2.6 2.6a1.5 1.5 0 0 0 0 2.2l2.6 2.6a1.5 1.5 0 0 0 1.1.4h.8z" fill="#32BCAD"/></svg>
-          <span class="text-[11px] font-extrabold text-[#32BCAD] pr-0.5">Pix</span>
-        </span>
-        <span class="inline-flex items-center justify-center bg-white border border-line rounded-md px-2.5 h-7"><span class="text-[13px] font-extrabold italic tracking-tight text-[#1A1F71]">VISA</span></span>
-        <span class="inline-flex items-center justify-center bg-white border border-line rounded-md px-2.5 h-7" aria-label="Mastercard">
-          <svg viewBox="0 0 32 20" class="h-4"><circle cx="13" cy="10" r="8" fill="#EB001B"/><circle cx="19" cy="10" r="8" fill="#F79E1B"/><path d="M16 4.2a8 8 0 0 0 0 11.6 8 8 0 0 0 0-11.6z" fill="#FF5F00"/></svg>
-        </span>
-        <span class="inline-flex items-center justify-center gap-0.5 bg-white border border-line rounded-md px-2 h-7" aria-label="Elo">
-          <span class="text-[12px] font-extrabold lowercase text-ink tracking-tight">elo</span>
-          <span class="flex gap-0.5"><span class="w-1.5 h-1.5 rounded-full bg-[#FFCB05]"></span><span class="w-1.5 h-1.5 rounded-full bg-[#EF4123]"></span><span class="w-1.5 h-1.5 rounded-full bg-[#00A4E0]"></span></span>
-        </span>
-        <span class="inline-flex items-center justify-center bg-[#006FCF] rounded-md px-2 h-7"><span class="text-[10px] font-extrabold text-white tracking-tight">AMEX</span></span>
-        <span class="inline-flex items-center justify-center bg-white border border-line rounded-md px-2 h-7"><span class="text-[11px] font-extrabold text-[#B3131B] tracking-tight">Hiper</span></span>
-      </div>
+    <div class="mt-5 pt-4 border-t border-line text-center">
+      <p class="text-[11px] font-semibold text-muted mb-2.5">Pagamento processado por gateway certificado</p>
+      <span class="inline-flex items-center gap-1 bg-white border border-line rounded-md px-2 h-7">
+        <svg viewBox="0 0 24 24" class="w-4 h-4"><path d="M8.6 3.9a2.4 2.4 0 0 1 3.4 0l2.6 2.6a1.5 1.5 0 0 0 1.1.4h.8l-3.4 3.4a1.5 1.5 0 0 1-2.2 0L8.3 7.7a1.5 1.5 0 0 0-1.1-.4H6.4zM3.9 8.6a2.4 2.4 0 0 0 0 3.4l2.6 2.6h.8a1.5 1.5 0 0 0 1.1-.5l2.6-2.6a1.5 1.5 0 0 0 0-2.2L8.3 6.7a1.5 1.5 0 0 0-1.1-.4" fill="#32BCAD"/><path d="M15.4 20.1a2.4 2.4 0 0 1-3.4 0l-2.6-2.6h.8a1.5 1.5 0 0 1 1.1.4l2.6 2.6a1.5 1.5 0 0 0 1.1.4zM20.1 15.4a2.4 2.4 0 0 0 0-3.4l-2.6-2.6h-.8a1.5 1.5 0 0 0-1.1.4l-2.6 2.6a1.5 1.5 0 0 0 0 2.2l2.6 2.6a1.5 1.5 0 0 0 1.1.4h.8z" fill="#32BCAD"/></svg>
+        <span class="text-[11px] font-extrabold text-[#32BCAD] pr-0.5">Pix</span>
+      </span>
     </div>
   </div>
 

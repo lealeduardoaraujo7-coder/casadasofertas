@@ -9,15 +9,13 @@ const etapas = {
 };
 
 const PRECO = 68.90;
-const MAX_PARCELAS = 10;
 
 let dadosCliente = null;
-let metodo = 'pix';
+const metodo = 'pix';
 let pedidoId = null;
 let poll = null;
 
 const so = (v) => v.replace(/\D/g, '');
-const brl = (n) => 'R$ ' + n.toFixed(2).replace('.', ',');
 
 /* ---------- Máscaras ---------- */
 function mascara(input, fn) {
@@ -65,31 +63,6 @@ function cpfValido(cpf) {
     if (d !== Number(cpf[t])) return false;
   }
   return true;
-}
-
-// Luhn — mesma checagem que a operadora faz
-function cartaoValido(num) {
-  num = so(num);
-  if (num.length < 13) return false;
-  let soma = 0, dobra = false;
-  for (let i = num.length - 1; i >= 0; i--) {
-    let d = Number(num[i]);
-    if (dobra) { d *= 2; if (d > 9) d -= 9; }
-    soma += d;
-    dobra = !dobra;
-  }
-  return soma % 10 === 0;
-}
-
-function bandeiraDe(num) {
-  num = so(num);
-  if (/^4/.test(num)) return 'VISA';
-  if (/^(5[1-5]|2[2-7])/.test(num)) return 'MASTER';
-  if (/^3[47]/.test(num)) return 'AMEX';
-  if (/^(4011|4312|4389|5041|5067|6277|6362|6363|650|651|655)/.test(num)) return 'ELO';
-  if (/^(30[0-5]|36|38)/.test(num)) return 'DINERS';
-  if (/^(38|60)/.test(num)) return 'HIPERCARD';
-  return '';
 }
 
 function erro(el, msg) {
@@ -153,78 +126,16 @@ $('btnVoltar').addEventListener('click', () => {
   $('passo2').classList.remove('ativo');
 });
 
-/* ---------- Alternar PIX / Cartão ---------- */
-document.querySelectorAll('.ck-metodo').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelector('.ck-metodo.selecionado').classList.remove('selecionado');
-    btn.classList.add('selecionado');
-    metodo = btn.dataset.metodo;
-    $('painelPix').hidden = metodo !== 'pix';
-    $('painelCartao').hidden = metodo !== 'cartao';
-    $('erroPagamento').hidden = true;
-    rastrear.escolherPagamento(metodo);
-  });
-});
-
-/* ---------- Campos do cartão ---------- */
-$('numeroCartao').addEventListener('input', (e) => {
-  e.target.value = so(e.target.value).slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 ');
-  $('bandeiraDetectada').textContent = bandeiraDe(e.target.value);
-});
-$('validadeCartao').addEventListener('input', (e) => {
-  e.target.value = so(e.target.value).slice(0, 4).replace(/(\d{2})(\d)/, '$1/$2');
-});
-$('cvvCartao').addEventListener('input', (e) => {
-  e.target.value = so(e.target.value).slice(0, 4);
-});
-$('nomeCartao').addEventListener('input', (e) => {
-  e.target.value = e.target.value.toUpperCase();
-});
-
-// Monta as opções de parcelamento (sem juros)
-const sel = $('parcelas');
-for (let i = 1; i <= MAX_PARCELAS; i++) {
-  const o = document.createElement('option');
-  o.value = i;
-  o.textContent = i === 1
-    ? `À vista — ${brl(PRECO)}`
-    : `${i}x de ${brl(PRECO / i)} sem juros`;
-  sel.appendChild(o);
-}
-
 /* ---------- Finalizar ---------- */
 $('btnFinalizar').addEventListener('click', async () => {
   const btn = $('btnFinalizar');
   const cx = $('erroPagamento');
   cx.hidden = true;
 
-  let pagamento = { metodo };
-
-  if (metodo === 'cartao') {
-    const num = $('numeroCartao').value;
-    const val = $('validadeCartao').value;
-    if (!cartaoValido(num)) return erro(cx, 'Número do cartão inválido. Confira os dígitos.');
-    if ($('nomeCartao').value.trim().length < 3) return erro(cx, 'Digite o nome impresso no cartão.');
-    if (!/^\d{2}\/\d{2}$/.test(val)) return erro(cx, 'Validade inválida. Use o formato MM/AA.');
-    const [mes, ano] = val.split('/').map(Number);
-    if (mes < 1 || mes > 12) return erro(cx, 'Mês de validade inválido.');
-    const hoje = new Date();
-    if (2000 + ano < hoje.getFullYear() || (2000 + ano === hoje.getFullYear() && mes < hoje.getMonth() + 1)) {
-      return erro(cx, 'Esse cartão está vencido.');
-    }
-    if ($('cvvCartao').value.length < 3) return erro(cx, 'CVV inválido.');
-
-    pagamento.cartao = {
-      numero: so(num),
-      titular: $('nomeCartao').value.trim(),
-      mes, ano: 2000 + ano,
-      cvv: $('cvvCartao').value,
-      parcelas: Number(sel.value),
-    };
-  }
+  const pagamento = { metodo };
 
   btn.disabled = true;
-  btn.textContent = metodo === 'pix' ? 'GERANDO SEU PIX...' : 'PROCESSANDO PAGAMENTO...';
+  btn.textContent = 'GERANDO SEU PIX...';
 
   try {
     const r = await fetch('/api/pedidos', {

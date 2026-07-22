@@ -4,6 +4,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { criarPix, cobrarCartao, consultarPago, statusPago, modoSimulado } = require('./amplopay');
+const meta = require('./meta');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -100,6 +101,13 @@ function salvarPedidos(p) {
     console.error('[aviso] não consegui gravar os pedidos em disco:', e.message);
   }
 }
+/** Avisa o Meta da venda, uma única vez por pedido. */
+function marcarConversao(pedido) {
+  if (pedido.conversaoEnviada) return;
+  pedido.conversaoEnviada = true;
+  meta.enviarCompra(pedido); // sem await: não faz o cliente esperar
+}
+
 function gerarId() {
   return 'CO' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
 }
@@ -201,6 +209,7 @@ app.get('/api/pedidos/:id/status', async (req, res) => {
         pedido.pago = true;
         pedido.pagoEm = new Date().toISOString();
         console.log(`[pago] ${pedido.pedidoId} — ${pedido.cliente.nome}`);
+        marcarConversao(pedido);
       }
     } catch (e) {
       console.error('[erro ao consultar status]', e.message);
@@ -229,6 +238,7 @@ app.post('/api/webhook/amplopay', (req, res) => {
   if (pedido && statusPago(status)) {
     pedido.pago = true;
     pedido.pagoEm = new Date().toISOString();
+    marcarConversao(pedido);
     salvarPedidos(pedidos);
     console.log(`[pago via webhook] ${pedido.pedidoId}`);
   }
