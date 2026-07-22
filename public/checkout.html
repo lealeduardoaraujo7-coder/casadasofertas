@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Checkout Seguro | Casa das Ofertas</title>
+<meta name="robots" content="noindex" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: {
+      brand:'#D32F2F', brandDk:'#9B1C1C', brandLt:'#F4A9A9', accent:'#E11D48', buy:'#16A34A',
+      ink:'#221F1F', muted:'#6F6664', line:'#EFE4E2', gold:'#F5A623', success:'#16A34A', page:'#FAF7F6',
+    },
+    fontFamily: { sans: ['"Plus Jakarta Sans"','system-ui','sans-serif'] },
+    borderRadius: { cta: '12px' },
+  }}}
+</script>
+<style>
+  body { background:#FAF7F6; color:#221F1F; }
+  .ic { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .campo{
+    width:100%; margin-top:5px; padding:12px 13px; font-size:15px; font-family:inherit;
+    border:1px solid #EFE4E2; border-radius:11px; background:#fff; color:#221F1F;
+  }
+  .campo:focus{ outline:none; border-color:#16A34A; box-shadow:0 0 0 3px rgba(22,163,74,.13); }
+  .campo.invalido{ border-color:#D32F2F; background:#FFF6F6; }
+  .rot{ display:block; font-size:12px; font-weight:700; color:#6F6664; margin-bottom:12px; letter-spacing:.2px; }
+  .ck-metodo{ border:2px solid #EFE4E2; background:#fff; }
+  .ck-metodo.selecionado{ border-color:#16A34A; background:#F2FBF5; }
+  .ck-metodo.selecionado .ic{ color:#16A34A; }
+  .passo.ativo{ color:#16A34A; }
+  .passo.ativo b{ background:#16A34A; }
+  @keyframes gira{ to{ transform:rotate(360deg) } }
+  .spin{ width:15px;height:15px;border:2px solid #E7D2A6;border-top-color:#8A6100;border-radius:50%;animation:gira .8s linear infinite; }
+</style>
+</head>
+
+<body class="font-sans text-ink">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-line">
+  <div class="max-w-[480px] mx-auto flex items-center justify-between px-4 py-3">
+    <a href="/" class="flex items-center gap-1.5">
+      <span class="w-8 h-8 rounded-lg bg-brand text-white grid place-items-center font-extrabold text-[13px]">CO</span>
+      <span class="font-extrabold text-lg tracking-tight text-ink">Casa das <span class="text-brand">Ofertas</span></span>
+    </a>
+    <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-success">
+      <svg viewBox="0 0 24 24" class="ic w-4 h-4"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+      AMBIENTE SEGURO
+    </span>
+  </div>
+</header>
+
+<!-- PASSOS -->
+<div class="bg-white border-b border-line">
+  <div class="max-w-[480px] mx-auto flex justify-center gap-5 px-4 py-2.5 text-[12px] text-muted font-semibold">
+    <span class="flex items-center gap-1.5 passo ativo"><b class="w-5 h-5 rounded-full bg-success text-white grid place-items-center text-[11px]">1</b> Dados</span>
+    <span class="flex items-center gap-1.5 passo" id="passo2"><b class="w-5 h-5 rounded-full bg-line text-white grid place-items-center text-[11px]">2</b> Pagamento</span>
+    <span class="flex items-center gap-1.5 passo" id="passo3"><b class="w-5 h-5 rounded-full bg-line text-white grid place-items-center text-[11px]">3</b> Confirmação</span>
+  </div>
+</div>
+
+<main class="max-w-[480px] mx-auto px-4 py-4 pb-10">
+
+  <!-- RESUMO DO PEDIDO -->
+  <div class="bg-white border border-line rounded-2xl p-4 mb-3">
+    <p class="text-[11px] font-bold tracking-wide text-muted mb-3">SEU PEDIDO</p>
+    <div class="flex gap-3 items-center pb-3 border-b border-line">
+      <img src="/img/produto-4.jpg" alt="Kit Halteres Ajustável 6 em 1" class="w-16 h-16 object-contain border border-line rounded-xl bg-white">
+      <div class="flex-1 leading-tight">
+        <p class="font-bold text-sm">Kit Halteres Ajustável 6 em 1</p>
+        <p class="text-muted text-xs mt-0.5">Halter + Barra + Kettlebell</p>
+        <p class="text-muted text-xs" id="variacaoTxt"></p>
+      </div>
+      <span class="font-extrabold text-sm whitespace-nowrap">R$ 89,90</span>
+    </div>
+    <div class="flex justify-between text-sm text-muted pt-2.5"><span>Subtotal</span><span class="text-ink font-semibold">R$ 89,90</span></div>
+    <div class="flex justify-between text-sm text-muted pt-1"><span>Frete</span><span class="text-success font-bold">Grátis</span></div>
+    <div class="flex justify-between items-end pt-2.5 mt-2.5 border-t border-line">
+      <span class="font-bold">Total</span><span class="text-2xl font-extrabold">R$ 89,90</span>
+    </div>
+  </div>
+
+  <!-- ETAPA 1: DADOS -->
+  <div class="bg-white border border-line rounded-2xl p-4 mb-3" id="etapaDados">
+    <h2 class="font-bold text-lg mb-3">Dados do comprador</h2>
+    <form id="formDados" novalidate>
+      <label class="rot">Nome completo
+        <input type="text" id="nome" class="campo" placeholder="Como no documento" autocomplete="name" required>
+      </label>
+      <label class="rot">E-mail
+        <input type="email" id="email" class="campo" placeholder="voce@email.com" autocomplete="email" required>
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="rot">CPF
+          <input type="text" id="cpf" class="campo" inputmode="numeric" placeholder="000.000.000-00" required>
+        </label>
+        <label class="rot">Celular (WhatsApp)
+          <input type="text" id="telefone" class="campo" inputmode="numeric" placeholder="(00) 00000-0000" required>
+        </label>
+      </div>
+
+      <p class="text-[11px] font-bold tracking-wide text-muted mt-2 mb-2">ENDEREÇO DE ENTREGA</p>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="rot">CEP
+          <input type="text" id="cep" class="campo" inputmode="numeric" placeholder="00000-000" required>
+        </label>
+        <label class="rot">Número
+          <input type="text" id="numero" class="campo" placeholder="123" required>
+        </label>
+      </div>
+      <label class="rot">Endereço
+        <input type="text" id="endereco" class="campo" placeholder="Rua, avenida..." required>
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="rot">Cidade
+          <input type="text" id="cidade" class="campo" required>
+        </label>
+        <label class="rot">Estado
+          <input type="text" id="uf" class="campo" maxlength="2" placeholder="SP" required>
+        </label>
+      </div>
+
+      <p class="bg-[#FFF1F1] text-brandDk border border-brandLt rounded-xl px-3 py-2.5 text-[13px] mb-3" id="erroDados" hidden></p>
+      <button type="submit" id="btnIrPagamento" class="w-full bg-buy text-white font-bold text-lg py-4 rounded-cta shadow-sm active:scale-[.99] transition">
+        IR PARA O PAGAMENTO
+      </button>
+    </form>
+  </div>
+
+  <!-- ETAPA 2: PAGAMENTO -->
+  <div class="bg-white border border-line rounded-2xl p-4 mb-3" id="etapaPagamento" hidden>
+    <h2 class="font-bold text-lg mb-3">Forma de pagamento</h2>
+
+    <div class="grid grid-cols-2 gap-2.5 mb-4">
+      <button type="button" data-metodo="pix" class="ck-metodo selecionado rounded-xl p-3 text-left flex items-center gap-2.5">
+        <svg viewBox="0 0 24 24" class="ic w-5 h-5 text-muted"><path d="M13 3L5 13.5h5.5L11 21l8-10.5h-5.5z"/></svg>
+        <span class="leading-tight"><b class="block text-sm">Pix</b><small class="block text-muted text-[11px]">Aprovação imediata</small></span>
+      </button>
+      <button type="button" data-metodo="cartao" class="ck-metodo rounded-xl p-3 text-left flex items-center gap-2.5">
+        <svg viewBox="0 0 24 24" class="ic w-5 h-5 text-muted"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M6.5 14.5h3"/></svg>
+        <span class="leading-tight"><b class="block text-sm">Cartão</b><small class="block text-muted text-[11px]">Em até 10x</small></span>
+      </button>
+    </div>
+
+    <!-- painel PIX -->
+    <div id="painelPix" class="border-t border-line pt-4">
+      <p class="text-muted text-sm">Ao finalizar, geramos o código Pix. O pedido é liberado assim que o pagamento cair — normalmente em segundos.</p>
+    </div>
+
+    <!-- painel CARTÃO -->
+    <div id="painelCartao" class="border-t border-line pt-4" hidden>
+      <label class="rot">Número do cartão
+        <span class="relative block">
+          <input type="text" id="numeroCartao" class="campo" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number">
+          <em class="absolute right-3 top-1/2 -translate-y-1/2 not-italic text-[11px] font-extrabold text-muted" id="bandeiraDetectada"></em>
+        </span>
+      </label>
+      <label class="rot">Nome impresso no cartão
+        <input type="text" id="nomeCartao" class="campo" placeholder="COMO ESTÁ NO CARTÃO" autocomplete="cc-name">
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="rot">Validade
+          <input type="text" id="validadeCartao" class="campo" inputmode="numeric" placeholder="MM/AA" autocomplete="cc-exp">
+        </label>
+        <label class="rot">CVV
+          <input type="text" id="cvvCartao" class="campo" inputmode="numeric" placeholder="000" autocomplete="cc-csc">
+        </label>
+      </div>
+      <label class="rot">Parcelamento
+        <select id="parcelas" class="campo"></select>
+      </label>
+    </div>
+
+    <div class="flex justify-between items-center border-t border-line pt-3 mt-4 mb-4">
+      <span class="text-muted text-sm">Total a pagar</span>
+      <b class="text-2xl font-extrabold" id="totalPagamento">R$ 89,90</b>
+    </div>
+
+    <p class="bg-[#FFF1F1] text-brandDk border border-brandLt rounded-xl px-3 py-2.5 text-[13px] mb-3" id="erroPagamento" hidden></p>
+    <button id="btnFinalizar" class="w-full bg-buy text-white font-bold text-lg py-4 rounded-cta shadow-sm active:scale-[.99] transition">FINALIZAR COMPRA</button>
+    <button id="btnVoltar" class="w-full text-muted text-[13px] mt-3">← Voltar e corrigir meus dados</button>
+
+    <div class="mt-5 pt-4 border-t border-line">
+      <p class="text-center text-[11px] font-semibold text-muted mb-2.5">Bandeiras aceitas</p>
+      <div class="flex flex-wrap justify-center items-center gap-1.5">
+        <span class="inline-flex items-center gap-1 bg-white border border-line rounded-md px-2 h-7">
+          <svg viewBox="0 0 24 24" class="w-4 h-4"><path d="M8.6 3.9a2.4 2.4 0 0 1 3.4 0l2.6 2.6a1.5 1.5 0 0 0 1.1.4h.8l-3.4 3.4a1.5 1.5 0 0 1-2.2 0L8.3 7.7a1.5 1.5 0 0 0-1.1-.4H6.4zM3.9 8.6a2.4 2.4 0 0 0 0 3.4l2.6 2.6h.8a1.5 1.5 0 0 0 1.1-.5l2.6-2.6a1.5 1.5 0 0 0 0-2.2L8.3 6.7a1.5 1.5 0 0 0-1.1-.4" fill="#32BCAD"/><path d="M15.4 20.1a2.4 2.4 0 0 1-3.4 0l-2.6-2.6h.8a1.5 1.5 0 0 1 1.1.4l2.6 2.6a1.5 1.5 0 0 0 1.1.4zM20.1 15.4a2.4 2.4 0 0 0 0-3.4l-2.6-2.6h-.8a1.5 1.5 0 0 0-1.1.4l-2.6 2.6a1.5 1.5 0 0 0 0 2.2l2.6 2.6a1.5 1.5 0 0 0 1.1.4h.8z" fill="#32BCAD"/></svg>
+          <span class="text-[11px] font-extrabold text-[#32BCAD] pr-0.5">Pix</span>
+        </span>
+        <span class="inline-flex items-center justify-center bg-white border border-line rounded-md px-2.5 h-7"><span class="text-[13px] font-extrabold italic tracking-tight text-[#1A1F71]">VISA</span></span>
+        <span class="inline-flex items-center justify-center bg-white border border-line rounded-md px-2.5 h-7" aria-label="Mastercard">
+          <svg viewBox="0 0 32 20" class="h-4"><circle cx="13" cy="10" r="8" fill="#EB001B"/><circle cx="19" cy="10" r="8" fill="#F79E1B"/><path d="M16 4.2a8 8 0 0 0 0 11.6 8 8 0 0 0 0-11.6z" fill="#FF5F00"/></svg>
+        </span>
+        <span class="inline-flex items-center justify-center gap-0.5 bg-white border border-line rounded-md px-2 h-7" aria-label="Elo">
+          <span class="text-[12px] font-extrabold lowercase text-ink tracking-tight">elo</span>
+          <span class="flex gap-0.5"><span class="w-1.5 h-1.5 rounded-full bg-[#FFCB05]"></span><span class="w-1.5 h-1.5 rounded-full bg-[#EF4123]"></span><span class="w-1.5 h-1.5 rounded-full bg-[#00A4E0]"></span></span>
+        </span>
+        <span class="inline-flex items-center justify-center bg-[#006FCF] rounded-md px-2 h-7"><span class="text-[10px] font-extrabold text-white tracking-tight">AMEX</span></span>
+        <span class="inline-flex items-center justify-center bg-white border border-line rounded-md px-2 h-7"><span class="text-[11px] font-extrabold text-[#B3131B] tracking-tight">Hiper</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ETAPA 3: PIX GERADO -->
+  <div class="bg-white border border-line rounded-2xl p-4 mb-3" id="etapaPix" hidden>
+    <h2 class="font-bold text-lg mb-2">Pague com Pix para concluir</h2>
+    <p class="text-muted text-sm mb-4">Abra o app do seu banco, escolha <b class="text-ink">Pix Copia e Cola</b> e cole o código abaixo. A confirmação é automática.</p>
+
+    <div class="grid place-items-center mb-4" id="qrArea"></div>
+
+    <label class="rot">Código Pix Copia e Cola
+      <textarea id="codigoPix" readonly rows="4" class="campo font-mono text-[12px] resize-none break-all"></textarea>
+    </label>
+    <button id="btnCopiar" class="w-full bg-buy text-white font-bold text-lg py-4 rounded-cta shadow-sm active:scale-[.99] transition">COPIAR CÓDIGO PIX</button>
+
+    <div class="flex items-center justify-center gap-2 bg-[#FFF8E6] text-[#8A6100] rounded-xl py-3 mt-4 text-sm font-semibold" id="statusPix">
+      <span class="spin"></span> Aguardando pagamento...
+    </div>
+    <p class="text-center text-[11px] text-muted mt-3">Pedido <b id="idPedido">—</b> · o código expira em 30 minutos.</p>
+  </div>
+
+  <!-- ETAPA 4: APROVADO -->
+  <div class="bg-white border border-line rounded-2xl p-6 text-center mb-3" id="etapaOk" hidden>
+    <svg viewBox="0 0 24 24" class="ic w-14 h-14 text-success mx-auto mb-2"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16 9.5"/></svg>
+    <h2 class="font-bold text-xl">Pagamento confirmado!</h2>
+    <p class="text-muted text-sm mt-2">Seu Kit Halteres Ajustável 6 em 1 já está sendo separado. Você recebe o código de rastreio por e-mail e WhatsApp em até 24h úteis.</p>
+    <a href="/" class="block w-full bg-buy text-white font-bold text-lg py-4 rounded-cta mt-5">VOLTAR PARA A LOJA</a>
+  </div>
+
+  <!-- SELOS DE CONFIANÇA -->
+  <div class="grid grid-cols-2 gap-2 text-[11px] text-muted">
+    <div class="flex items-center gap-2 bg-white border border-line rounded-xl px-3 py-2.5"><svg viewBox="0 0 24 24" class="ic w-4 h-4 text-success"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg> Dados criptografados</div>
+    <div class="flex items-center gap-2 bg-white border border-line rounded-xl px-3 py-2.5"><svg viewBox="0 0 24 24" class="ic w-4 h-4 text-success"><path d="M12 3l7 3v5c0 4.4-3 7.4-7 8.9C8 17.4 5 14.4 5 10V6z"/><path d="M9 12l2 2 4-4"/></svg> 7 dias para troca</div>
+    <div class="flex items-center gap-2 bg-white border border-line rounded-xl px-3 py-2.5"><svg viewBox="0 0 24 24" class="ic w-4 h-4 text-success"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7.5" cy="17.3" r="1.4"/><circle cx="17.5" cy="17.3" r="1.4"/></svg> Frete grátis Brasil</div>
+    <div class="flex items-center gap-2 bg-white border border-line rounded-xl px-3 py-2.5"><svg viewBox="0 0 24 24" class="ic w-4 h-4 text-success"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></svg> Suporte por e-mail</div>
+  </div>
+</main>
+
+<footer class="max-w-[480px] mx-auto border-t border-line px-4 py-6 text-center text-[11px] text-muted">
+  <!-- Espaço para os selos oficiais (Site Blindado / SSL) — cole aqui o script de cada empresa -->
+  <div class="flex gap-2 justify-center mb-4">
+    <div class="flex-1 h-14 grid place-items-center border border-dashed border-line rounded-xl text-[10px]">Selo Site Blindado</div>
+    <div class="flex-1 h-14 grid place-items-center border border-dashed border-line rounded-xl text-[10px]">Selo SSL</div>
+  </div>
+  <p>© 2026 Casa das Ofertas · [PREENCHER] CNPJ 00.000.000/0001-00</p>
+  <p class="mt-1">Pagamentos processados por gateway certificado.</p>
+</footer>
+
+<script src="/js/checkout.js"></script>
+</body>
+</html>
