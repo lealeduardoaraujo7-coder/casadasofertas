@@ -277,7 +277,6 @@
     </div>
     <div class="marquee mt-4 -mx-4 overflow-hidden"><div id="avaliacoesTrack" class="marquee-track flex gap-3 w-max px-4"></div></div>
     <div class="space-y-3 mt-4" id="depoimentosBox"></div>
-    <p class="text-center text-brandDk font-semibold text-sm mt-4" id="verTodas"></p>
     <button type="button" onclick="iniciarCheckout()" class="w-full text-center bg-buy text-white font-bold text-lg py-4 rounded-cta mt-4 shadow-sm active:scale-[.99] transition" data-cta3></button>
   </section>
 
@@ -350,8 +349,8 @@ const PRODUTO = {
   // Os arquivos foram enviados em ordem invertida (o 1 tem o conteúdo do 7 e
   // assim por diante). A lista abaixo já está na ordem visual correta.
   galeria: [
-    'produto-1.webp', // halteres + kettlebell + barras  <- abre a página
-    'produto-4.webp', // kit completo em fundo branco
+    'produto-4.webp', // kit completo em fundo branco  <- abre a página
+    'produto-1.webp', // halteres + kettlebell + barras
     'produto-7.webp', // mulher na flexão
     'produto-6.webp', // 3 modos de kettlebell
     'produto-5.webp', // haltere para barra
@@ -601,7 +600,6 @@ el('compareBody').innerHTML = PRODUTO.comparacao.map(([rec, a, b]) => `
 el('provaNota').textContent = PRODUTO.nota;
 el('provaQtd').textContent = `${PRODUTO.qtdAvaliacoes} avaliações`;
 el('vendidos2').textContent = PRODUTO.vendidos;
-el('verTodas').textContent = `Ver todas as ${PRODUTO.qtdAvaliacoes} avaliações`;
 
 const curtas = [...PRODUTO.avaliacoesCurtas, ...PRODUTO.avaliacoesCurtas];
 el('avaliacoesTrack').innerHTML = curtas.map((t) => `
