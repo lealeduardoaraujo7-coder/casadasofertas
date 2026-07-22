@@ -19,10 +19,6 @@ let poll = null;
 const so = (v) => v.replace(/\D/g, '');
 const brl = (n) => 'R$ ' + n.toFixed(2).replace('.', ',');
 
-// Carga escolhida lá na página do produto
-const variacao = sessionStorage.getItem('variacao');
-if (variacao) $('variacaoTxt').textContent = `Carga: ${variacao}`;
-
 /* ---------- Máscaras ---------- */
 function mascara(input, fn) {
   input.addEventListener('input', () => { input.value = fn(input.value); });
