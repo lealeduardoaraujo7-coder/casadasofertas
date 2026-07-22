@@ -7,7 +7,7 @@
                       pixel. É um número de 15 ou 16 dígitos.
    UTMIFY_PIXEL_ID -> Painel da Utmify > Pixel > criar/copiar ID.
    ========================================================================== */
-const META_PIXEL_ID = '';
+const META_PIXEL_ID = '1780777813273982';
 const UTMIFY_PIXEL_ID = '';
 
 const PRODUTO_TRACK = {
