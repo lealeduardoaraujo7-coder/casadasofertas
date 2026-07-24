@@ -3,17 +3,21 @@ require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { criarPix, cobrarCartao, consultarPago, statusPago, modoSimulado } = require('./amplopay');
+const {
+  criarPix, cobrarCartao, consultarPago, statusPago,
+  modoSimulado, assinaturaConfigurada, verificarAssinatura,
+} = require('./zuckpay');
 const meta = require('./meta');
+const utmify = require('./utmify');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a AmploPay cobra em REAIS
+const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a ZuckPay cobra em REAIS
 const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
 // esse /tmp é temporário (some quando a função hiberna). Por isso mantemos um
 // cache em memória junto — e a confirmação real do pagamento sempre vem da
-// consulta à AmploPay, não do arquivo.
+// consulta à ZuckPay, não do arquivo.
 const NA_VERCEL = !!process.env.VERCEL;
 const ARQUIVO_PEDIDOS = NA_VERCEL
   ? path.join('/tmp', 'pedidos.json')
@@ -21,7 +25,12 @@ const ARQUIVO_PEDIDOS = NA_VERCEL
 
 let cache = null;
 
-app.use(express.json({ limit: '30mb' })); // as fotos chegam em base64 no upload
+// O `verify` guarda o corpo cru: a assinatura do webhook da ZuckPay é
+// calculada sobre os bytes originais, não sobre o JSON já parseado.
+app.use(express.json({
+  limit: '30mb', // as fotos chegam em base64 no upload
+  verify: (req, res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ---------- Imagem em outro formato ----------
@@ -101,11 +110,12 @@ function salvarPedidos(p) {
     console.error('[aviso] não consegui gravar os pedidos em disco:', e.message);
   }
 }
-/** Avisa o Meta da venda, uma única vez por pedido. */
+/** Avisa Meta e Utmify da venda, uma única vez por pedido. */
 function marcarConversao(pedido) {
   if (pedido.conversaoEnviada) return;
   pedido.conversaoEnviada = true;
-  meta.enviarCompra(pedido); // sem await: não faz o cliente esperar
+  meta.enviarCompra(pedido);              // sem await: não faz o cliente esperar
+  utmify.enviarPedido(pedido, 'paid');    // registra a venda confirmada
 }
 
 function gerarId() {
@@ -131,7 +141,9 @@ app.post('/api/pedidos', async (req, res) => {
     descricao: DESCRICAO,
     cliente: c,
     referencia: pedidoId,
-    callbackUrl: process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/api/webhook/amplopay` : null,
+    callbackUrl: process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/api/webhook/zuckpay` : null,
+    // A ZuckPay guarda as UTMs/fbc/fbp junto da transação e devolve no webhook.
+    utms: req.body?.utms || {},
   };
 
   // O pedido é gravado sem NENHUM dado de cartão — só os 4 últimos dígitos.
@@ -173,6 +185,9 @@ app.post('/api/pedidos', async (req, res) => {
     const pix = await criarPix(base);
     gravar({ transacaoId: pix.transacaoId, pago: false, simulado: pix.simulado });
 
+    // Registra o pedido pendente na Utmify (a confirmação vem depois, no pago).
+    utmify.enviarPedido(lerPedidos()[pedidoId], 'waiting_payment');
+
     console.log(`[pedido] ${pedidoId} PIX criado — ${c.nome} (${c.email})${pix.simulado ? ' [SIMULADO]' : ''}`);
 
     res.json({
@@ -196,8 +211,8 @@ app.get('/api/pedidos/:id/status', async (req, res) => {
   const pedido = pedidos[req.params.id];
   if (!pedido) return res.status(404).json({ erro: 'Pedido não encontrado.' });
 
-  // O checkout pergunta a cada 5s, mas a AmploPay pede para não fazer polling
-  // frequente na API deles (a confirmação boa chega pelo callbackUrl). Então
+  // O checkout pergunta a cada 5s, mas a ZuckPay pede para não fazer polling
+  // frequente na API deles (a confirmação boa chega pelo urlnoty). Então
   // consultamos o gateway no máximo uma vez a cada 20 segundos por pedido.
   const INTERVALO_CONSULTA = 20000;
   const agora = Date.now();
@@ -220,17 +235,28 @@ app.get('/api/pedidos/:id/status', async (req, res) => {
   res.json({ pago: pedido.pago });
 });
 
-/* ---------- Webhook / postback da AmploPay ---------- */
-app.post('/api/webhook/amplopay', (req, res) => {
+/* ---------- Webhook / postback da ZuckPay (urlnoty) ---------- */
+app.post('/api/webhook/zuckpay', (req, res) => {
   const corpo = req.body || {};
-  console.log('[webhook amplopay]', JSON.stringify(corpo));
+  console.log('[webhook zuckpay]', JSON.stringify(corpo));
 
-  // Campos da AmploPay: id / clientIdentifier / status (PENDING, COMPLETED,
-  // FAILED, REFUNDED, CHARGED_BACK). Aceitamos também o formato aninhado.
-  const dados = corpo.data || corpo;
-  const status = dados.status;
-  const ref = dados.clientIdentifier || dados.identifier;
-  const transacaoId = dados.id || dados.transactionId;
+  // A assinatura só existe se houver um Webhook Secret gerado no painel.
+  // Com secret configurado, postback sem assinatura válida é recusado.
+  if (assinaturaConfigurada()) {
+    if (!verificarAssinatura(req.rawBody, req.get('X-ZuckPay-Signature'))) {
+      console.error('[webhook zuckpay] assinatura inválida — ignorado');
+      return res.sendStatus(401);
+    }
+  } else if (!modoSimulado()) {
+    console.warn('[webhook zuckpay] sem ZUCKPAY_WEBHOOK_SECRET: postback aceito SEM validação.');
+  }
+
+  // Formato oficial: { event, platform, transaction: {...} }. O postback do
+  // SPEI vem sem o envelope, então aceitamos o corpo direto também.
+  const t = corpo.transaction || corpo.data || corpo;
+  const status = t.status;
+  const ref = t.external_id_client || t.external_id;
+  const transacaoId = t.id || t.transactionId;
 
   const pedidos = lerPedidos();
   const pedido = pedidos[ref] || Object.values(pedidos).find((p) => p.transacaoId === transacaoId);
@@ -264,8 +290,8 @@ if (NA_VERCEL) {
   console.log(`\n  Casa das Ofertas rodando em http://localhost:${PORT}`);
   console.log(`  Produto: R$ ${PRECO.toFixed(2).replace('.', ',')}`);
   if (modoSimulado()) {
-    console.log('  ⚠️  MODO SIMULADO — sem credenciais AmploPay no .env. Os PIX gerados NÃO são reais.\n');
+    console.log('  ⚠️  MODO SIMULADO — sem credenciais ZuckPay no .env. Os PIX gerados NÃO são reais.\n');
   } else {
-    console.log('  ✅ AmploPay conectada.\n');
+    console.log('  ✅ ZuckPay conectada.\n');
   }
 });

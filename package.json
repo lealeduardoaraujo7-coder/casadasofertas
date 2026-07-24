@@ -2,7 +2,7 @@
   "name": "casa-das-ofertas",
   "version": "1.0.0",
   "private": true,
-  "description": "Loja Casa das Ofertas - pagina de produto + checkout proprio com AmploPay",
+  "description": "Loja Casa das Ofertas - pagina de produto + checkout proprio com ZuckPay",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
