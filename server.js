@@ -7,6 +7,7 @@ const {
   criarPix, cobrarCartao, consultarPago, statusPago,
   modoSimulado, assinaturaConfigurada, verificarAssinatura,
 } = require('./zuckpay');
+const QRCode = require('qrcode');
 const meta = require('./meta');
 const utmify = require('./utmify');
 
@@ -199,13 +200,26 @@ app.post('/api/pedidos', async (req, res) => {
 
     console.log(`[pedido] ${pedidoId} PIX criado — ${c.nome} (${c.email})${pix.simulado ? ' [SIMULADO]' : ''}`);
 
+    // Se o gateway não mandar a imagem, desenhamos o QR aqui mesmo. Antes isso
+    // apontava para um serviço externo (api.qrserver.com): o cliente esperava
+    // ~0,7s de rede olhando um espaço vazio, e o QR sumia se o serviço caísse.
+    let qrCodeImagem = pix.qrCodeImagem;
+    if (!qrCodeImagem) {
+      try {
+        qrCodeImagem = await QRCode.toDataURL(pix.pixCopiaECola, { width: 300, margin: 1 });
+      } catch (e) {
+        // Sem imagem o cliente ainda paga pelo Copia e Cola: não é motivo
+        // para derrubar o pedido inteiro.
+        console.error('[aviso] não consegui gerar o QR Code:', e.message);
+        qrCodeImagem = null;
+      }
+    }
+
     res.json({
       pedidoId,
       aprovado: false,
       pixCopiaECola: pix.pixCopiaECola,
-      // Se o gateway não mandar a imagem, geramos o QR a partir do código.
-      qrCodeImagem: pix.qrCodeImagem
-        || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pix.pixCopiaECola)}`,
+      qrCodeImagem,
       simulado: pix.simulado,
     });
   } catch (e) {

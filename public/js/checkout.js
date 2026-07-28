@@ -195,7 +195,9 @@ $('btnFinalizar').addEventListener('click', async () => {
     } else {
       $('idPedido').textContent = d.pedidoId;
       $('codigoPix').value = d.pixCopiaECola;
-      $('qrArea').innerHTML = `<img src="${d.qrCodeImagem}" alt="QR Code PIX">`;
+      $('qrArea').innerHTML = d.qrCodeImagem
+        ? `<img src="${d.qrCodeImagem}" alt="QR Code PIX" width="300" height="300" class="rounded-xl">`
+        : '<p class="text-muted text-sm text-center">Use o código Copia e Cola abaixo para pagar.</p>';
       etapas.pix.hidden = false;
       iniciarPolling();
     }
