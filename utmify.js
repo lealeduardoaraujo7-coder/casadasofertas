@@ -44,10 +44,13 @@ function trackingParameters(utms = {}) {
  * @param {'waiting_payment'|'paid'|'refused'|'refunded'|'chargedback'} status
  */
 async function enviarPedido(pedido, status) {
-  if (!ativo()) return;
+  // Sem token não há o que enviar: devolve true para não bloquear o fluxo de
+  // quem espera a confirmação (o pedido não fica preso em "não notificado").
+  if (!ativo()) return true;
 
   const c = pedido.cliente || {};
   const centavos = Math.round(Number(pedido.valor || 0) * 100);
+  const unidades = Math.max(1, Number(pedido.quantidade) || 1);
   const pago = status === 'paid';
 
   const corpo = {
@@ -70,8 +73,10 @@ async function enviarPedido(pedido, status) {
       name: 'Kit Halteres Ajustavel 6 em 1',
       planId: null,
       planName: null,
-      quantity: 1,
-      priceInCents: centavos,
+      // O checkout permite até 5 unidades: sem isso o relatório mostraria
+      // sempre 1 item com o valor do pedido inteiro.
+      quantity: unidades,
+      priceInCents: Math.round(centavos / unidades),
     }],
     trackingParameters: trackingParameters(pedido.utms),
     commission: {
@@ -91,10 +96,15 @@ async function enviarPedido(pedido, status) {
       body: JSON.stringify(corpo),
     });
     const texto = await resp.text();
-    if (!resp.ok) console.error('[utmify] falhou:', resp.status, texto);
-    else console.log(`[utmify] pedido ${pedido.pedidoId} -> ${status}`);
+    if (!resp.ok) {
+      console.error('[utmify] falhou:', resp.status, texto);
+      return false;
+    }
+    console.log(`[utmify] pedido ${pedido.pedidoId} -> ${status}`);
+    return true;
   } catch (e) {
     console.error('[utmify] erro de rede:', e.message);
+    return false;
   }
 }
 

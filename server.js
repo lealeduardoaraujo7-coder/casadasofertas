@@ -112,12 +112,28 @@ function salvarPedidos(p) {
     console.error('[aviso] não consegui gravar os pedidos em disco:', e.message);
   }
 }
-/** Avisa Meta e Utmify da venda, uma única vez por pedido. */
-function marcarConversao(pedido) {
+/**
+ * Avisa Meta e Utmify da venda, uma única vez por pedido.
+ *
+ * Precisa de await: na Vercel a função serverless é congelada assim que a
+ * resposta HTTP sai, e qualquer promessa pendente morre com ela — era por isso
+ * que o "paid" não chegava na Utmify enquanto o "waiting_payment" chegava (esse
+ * sai junto da criação do Pix, que ainda tem trabalho pela frente).
+ *
+ * A flag só é marcada DEPOIS do envio confirmado. Se marcássemos antes e o
+ * envio falhasse, o reenvio do webhook pela ZuckPay seria bloqueado pelo guard
+ * e a venda ficaria para sempre sem registro.
+ */
+async function marcarConversao(pedido) {
   if (pedido.conversaoEnviada) return;
-  pedido.conversaoEnviada = true;
-  meta.enviarCompra(pedido);              // sem await: não faz o cliente esperar
-  utmify.enviarPedido(pedido, 'paid');    // registra a venda confirmada
+
+  const [, enviouUtmify] = await Promise.all([
+    meta.enviarCompra(pedido).catch((e) => console.error('[meta] falhou:', e.message)),
+    utmify.enviarPedido(pedido, 'paid'),
+  ]);
+
+  if (enviouUtmify) pedido.conversaoEnviada = true;
+  else console.error(`[utmify] pedido ${pedido.pedidoId} segue pendente — será reenviado.`);
 }
 
 function gerarId() {
@@ -247,7 +263,7 @@ app.get('/api/pedidos/:id/status', async (req, res) => {
         pedido.pago = true;
         pedido.pagoEm = new Date().toISOString();
         console.log(`[pago] ${pedido.pedidoId} — ${pedido.cliente.nome}`);
-        marcarConversao(pedido);
+        await marcarConversao(pedido);
       }
     } catch (e) {
       console.error('[erro ao consultar status]', e.message);
@@ -259,7 +275,7 @@ app.get('/api/pedidos/:id/status', async (req, res) => {
 });
 
 /* ---------- Webhook / postback da ZuckPay (urlnoty) ---------- */
-app.post('/api/webhook/zuckpay', (req, res) => {
+app.post('/api/webhook/zuckpay', async (req, res) => {
   const corpo = req.body || {};
   console.log('[webhook zuckpay]', JSON.stringify(corpo));
 
@@ -287,7 +303,9 @@ app.post('/api/webhook/zuckpay', (req, res) => {
   if (pedido && statusPago(status)) {
     pedido.pago = true;
     pedido.pagoEm = new Date().toISOString();
-    marcarConversao(pedido);
+    // Grava só depois do envio: marcarConversao atualiza conversaoEnviada e
+    // esse valor precisa entrar no arquivo junto.
+    await marcarConversao(pedido);
     salvarPedidos(pedidos);
     console.log(`[pago via webhook] ${pedido.pedidoId}`);
   }
