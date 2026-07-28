@@ -13,6 +13,7 @@ const utmify = require('./utmify');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a ZuckPay cobra em REAIS
+const QTD_MAXIMA = 5;
 const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
 // esse /tmp é temporário (some quando a função hiberna). Por isso mantemos um
@@ -131,14 +132,21 @@ app.post('/api/pedidos', async (req, res) => {
   if (faltando.length) {
     return res.status(400).json({ erro: `Dados incompletos: ${faltando.join(', ')}.` });
   }
+
+  // O total é calculado aqui, nunca aceito pronto do cliente.
+  const quantidade = Math.floor(Number(req.body?.quantidade) || 1);
+  if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > QTD_MAXIMA) {
+    return res.status(400).json({ erro: `Quantidade deve ser entre 1 e ${QTD_MAXIMA}.` });
+  }
+  const valorTotal = Number((PRECO * quantidade).toFixed(2));
   if (pagamento.metodo === 'cartao' && !pagamento.cartao?.numero) {
     return res.status(400).json({ erro: 'Dados do cartão não recebidos.' });
   }
 
   const pedidoId = gerarId();
   const base = {
-    valor: PRECO,
-    descricao: DESCRICAO,
+    valor: valorTotal,
+    descricao: quantidade > 1 ? `${DESCRICAO} (${quantidade}x)` : DESCRICAO,
     cliente: c,
     referencia: pedidoId,
     callbackUrl: process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/api/webhook/zuckpay` : null,
@@ -152,7 +160,8 @@ app.post('/api/pedidos', async (req, res) => {
     pedidos[pedidoId] = {
       pedidoId,
       cliente: c,
-      valor: PRECO,
+      valor: valorTotal,
+      quantidade,
       metodo: pagamento.metodo,
       utms: req.body?.utms || {},
       criadoEm: new Date().toISOString(),

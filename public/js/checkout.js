@@ -9,7 +9,9 @@ const etapas = {
 };
 
 const PRECO = 68.90;
+const QTD_MAXIMA = 5;
 
+let quantidade = 1;
 let dadosCliente = null;
 const metodo = 'pix';
 let pedidoId = null;
@@ -20,6 +22,29 @@ const so = (v) => v.replace(/\D/g, '');
 // Chegou no checkout: esse é o momento seguro para o evento, com a página
 // já carregada e sem navegação em curso para cortar a requisição.
 rastrear.iniciarCheckout();
+
+/* ---------- Quantidade ---------- */
+const real = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+function pintarQuantidade() {
+  const total = PRECO * quantidade;
+  $('qtdValor').textContent = quantidade;
+  $('valorItem').textContent = real(total);
+  $('valorSubtotal').textContent = real(total);
+  $('valorTotal').textContent = real(total);
+  $('totalPagamento').textContent = real(total);
+  $('qtdMenos').disabled = quantidade <= 1;
+  $('qtdMais').disabled = quantidade >= QTD_MAXIMA;
+  $('qtdAviso').hidden = quantidade < QTD_MAXIMA;
+}
+
+$('qtdMenos').addEventListener('click', () => {
+  if (quantidade > 1) { quantidade--; pintarQuantidade(); }
+});
+$('qtdMais').addEventListener('click', () => {
+  if (quantidade < QTD_MAXIMA) { quantidade++; pintarQuantidade(); }
+});
+pintarQuantidade();
 
 /* ---------- Máscaras ---------- */
 function mascara(input, fn) {
@@ -149,6 +174,7 @@ $('btnFinalizar').addEventListener('click', async () => {
       body: JSON.stringify({
         cliente: dadosCliente,
         pagamento,
+        quantidade,
         // origem da campanha, para conferir a atribuição depois
         utms: JSON.parse(sessionStorage.getItem('utms') || '{}'),
       }),
@@ -159,6 +185,9 @@ $('btnFinalizar').addEventListener('click', async () => {
     pedidoId = d.pedidoId;
     $('passo3').classList.add('ativo');
     etapas.pagamento.hidden = true;
+    // valor já cobrado: não deixa mexer na quantidade depois do Pix gerado
+    $('qtdMenos').disabled = true;
+    $('qtdMais').disabled = true;
 
     if (d.aprovado) {
       rastrear.comprar(pedidoId);
