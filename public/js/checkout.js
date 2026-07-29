@@ -69,18 +69,40 @@ $('uf').addEventListener('input', (e) => {
 });
 
 /* ---------- Endereço pelo CEP (ViaCEP) ---------- */
+const ICONE_OK = '<svg viewBox="0 0 24 24" class="ic w-4 h-4 shrink-0"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7.5" cy="17.3" r="1.4"/><circle cx="17.5" cy="17.3" r="1.4"/></svg>';
+
+/** Mostra frete e prazo embaixo do CEP. O frete é fixo, então nunca falha. */
+function mostrarFrete(destino) {
+  const cx = $('freteInfo');
+  cx.hidden = false;
+  cx.className = 'text-[13px] -mt-1 mb-3 flex items-center gap-1.5 text-success font-semibold';
+  cx.innerHTML = `${ICONE_OK}<span>${destino ? `Entrega para ${destino} · ` : ''}Frete ${real(FRETE)} · até 7 dias úteis</span>`;
+}
+
+function erroFrete(msg) {
+  const cx = $('freteInfo');
+  cx.hidden = false;
+  cx.className = 'text-[13px] -mt-1 mb-3 flex items-center gap-1.5 text-brandDk font-semibold';
+  cx.textContent = msg;
+}
+
 $('cep').addEventListener('blur', async () => {
   const cep = so($('cep').value);
-  if (cep.length !== 8) return;
+  if (!cep) return; // campo vazio: nada a dizer ainda
+  if (cep.length !== 8) return erroFrete('CEP incompleto — digite os 8 números.');
   try {
     const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const d = await r.json();
-    if (d.erro) return;
+    if (d.erro) return erroFrete('CEP não encontrado. Confira os números.');
     if (d.logradouro) $('endereco').value = d.logradouro;
     if (d.localidade) $('cidade').value = d.localidade;
     if (d.uf) $('uf').value = d.uf;
+    mostrarFrete(d.localidade && d.uf ? `${d.localidade}/${d.uf}` : '');
     $('numero').focus();
-  } catch { /* offline: o cliente preenche na mão */ }
+  } catch {
+    // offline: o cliente preenche na mão, mas o frete é fixo e já dá para informar
+    mostrarFrete('');
+  }
 });
 
 /* ---------- Validações ---------- */
