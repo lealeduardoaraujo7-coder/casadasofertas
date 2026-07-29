@@ -61,9 +61,19 @@ function headers() {
   };
 }
 
-/** Status de transação que significam "o dinheiro entrou". */
+/**
+ * Status de transação que significam "o dinheiro entrou".
+ *
+ * A doc da ZuckPay usa PAID, mas já vimos postback chegar com outra grafia —
+ * e quando a string não é reconhecida o webhook responde 200 e a venda é
+ * descartada em silêncio, sem retentativa. Por isso a lista é mais larga que
+ * um único valor. PENDING/PENDING_3DS/WAITING ficam de fora de propósito:
+ * ali o dinheiro ainda não entrou.
+ */
+const STATUS_PAGOS = ['PAID', 'APPROVED', 'COMPLETED', 'CONFIRMED', 'SUCCEEDED', 'SUCCESS'];
+
 function statusPago(status) {
-  return String(status || '').toUpperCase() === 'PAID';
+  return STATUS_PAGOS.includes(String(status || '').toUpperCase().trim());
 }
 
 async function chamar(url, opcoes) {

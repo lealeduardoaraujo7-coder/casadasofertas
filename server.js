@@ -14,6 +14,7 @@ const utmify = require('./utmify');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a ZuckPay cobra em REAIS
+const FRETE = Number(process.env.SHIPPING_PRICE || 10); // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
@@ -140,6 +141,30 @@ function gerarId() {
   return 'CO' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
 }
 
+/**
+ * Monta a URL que a ZuckPay chama para confirmar o pagamento.
+ *
+ * Depender só do PUBLIC_URL já custou vendas: se a variável fica vazia o
+ * callbackUrl vai `null` e a confirmação nunca chega — e o pedido pendente
+ * continua sendo registrado normalmente, porque esse é enviado por nós na
+ * criação do Pix. O sintoma é justamente "pendente aparece, aprovado não".
+ *
+ * Então: usa o PUBLIC_URL quando existir (sem barra sobrando no fim, que
+ * geraria //api/webhook) e cai para o próprio host da requisição quando não.
+ * O valor final é logado porque na Vercel o PUBLIC_URL fica marcado como
+ * Sensitive — nem o painel mostra o conteúdo, só o log revela o que foi usado.
+ */
+function urlDoWebhook(req) {
+  const configurado = String(process.env.PUBLIC_URL || '').trim().replace(/\/+$/, '');
+  if (configurado) return `${configurado}/api/webhook/zuckpay`;
+
+  const proto = req.get('x-forwarded-proto') || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host');
+  if (!host) return null;
+  console.warn('[aviso] PUBLIC_URL vazio — usando o host da requisição para o callback.');
+  return `${proto}://${host}/api/webhook/zuckpay`;
+}
+
 /* ---------- Cria o pedido (PIX ou cartão) ---------- */
 app.post('/api/pedidos', async (req, res) => {
   const c = req.body?.cliente || {};
@@ -155,7 +180,7 @@ app.post('/api/pedidos', async (req, res) => {
   if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > QTD_MAXIMA) {
     return res.status(400).json({ erro: `Quantidade deve ser entre 1 e ${QTD_MAXIMA}.` });
   }
-  const valorTotal = Number((PRECO * quantidade).toFixed(2));
+  const valorTotal = Number((PRECO * quantidade + FRETE).toFixed(2));
   if (pagamento.metodo === 'cartao' && !pagamento.cartao?.numero) {
     return res.status(400).json({ erro: 'Dados do cartão não recebidos.' });
   }
@@ -166,7 +191,7 @@ app.post('/api/pedidos', async (req, res) => {
     descricao: quantidade > 1 ? `${DESCRICAO} (${quantidade}x)` : DESCRICAO,
     cliente: c,
     referencia: pedidoId,
-    callbackUrl: process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/api/webhook/zuckpay` : null,
+    callbackUrl: urlDoWebhook(req),
     // A ZuckPay guarda as UTMs/fbc/fbp junto da transação e devolve no webhook.
     utms: req.body?.utms || {},
   };
@@ -215,6 +240,9 @@ app.post('/api/pedidos', async (req, res) => {
     utmify.enviarPedido(lerPedidos()[pedidoId], 'waiting_payment');
 
     console.log(`[pedido] ${pedidoId} PIX criado — ${c.nome} (${c.email})${pix.simulado ? ' [SIMULADO]' : ''}`);
+    // Sem esse log não há como saber para onde a confirmação foi pedida: o
+    // PUBLIC_URL é Sensitive na Vercel e não aparece nem no painel.
+    console.log(`[pedido] ${pedidoId} callback do webhook: ${base.callbackUrl}`);
 
     // Se o gateway não mandar a imagem, desenhamos o QR aqui mesmo. Antes isso
     // apontava para um serviço externo (api.qrserver.com): o cliente esperava
@@ -310,8 +338,9 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
     pedido = {
       pedidoId: ref,
       transacaoId,
-      valor: valorRecebido > 0 ? valorRecebido : PRECO,
-      quantidade: valorRecebido > 0 ? Math.max(1, Math.round(valorRecebido / PRECO)) : 1,
+      valor: valorRecebido > 0 ? valorRecebido : PRECO + FRETE,
+      // desconta o frete fixo antes de estimar quantas unidades foram pagas
+      quantidade: valorRecebido > 0 ? Math.max(1, Math.round((valorRecebido - FRETE) / PRECO)) : 1,
       metodo: 'pix',
       cliente: {
         nome: t.nome || t.customer?.name || null,
@@ -338,10 +367,73 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
   } else if (!pedido) {
     console.error(`[webhook zuckpay] pedido não encontrado (ref=${ref}, transacao=${transacaoId}) — nada enviado.`);
   } else {
-    console.log(`[webhook zuckpay] ${pedido.pedidoId} com status "${status}" — ignorado (só PAID conta).`);
+    // Pendente é rotina. Qualquer outra grafia é suspeita de venda perdida:
+    // respondemos 200 e a ZuckPay não retenta, então precisa gritar no log.
+    const rotina = ['PENDING', 'PENDING_3DS', 'WAITING', 'WAITING_PAYMENT', 'CREATED'];
+    if (rotina.includes(String(status || '').toUpperCase().trim())) {
+      console.log(`[webhook zuckpay] ${pedido.pedidoId} ainda "${status}" — aguardando pagamento.`);
+    } else {
+      console.error(`[ATENCAO] ${pedido.pedidoId} veio com status "${status}", que não está na lista de pagos nem de pendentes. Se essa venda foi aprovada, a conversão NÃO foi enviada — inclua a string em STATUS_PAGOS no zuckpay.js.`);
+    }
   }
 
   res.sendStatus(200);
+});
+
+/* ---------- Recupera manualmente uma venda que não foi registrada ----------
+   Existe porque uma confirmação perdida (assinatura recusada, callbackUrl
+   errado, status com outra grafia) é dinheiro que a Utmify nunca vê, e o
+   postback da ZuckPay não fica disponível para sempre.
+
+   Confere na ZuckPay se a transação está realmente paga antes de enviar
+   qualquer conversão — nunca aceita "está pago" vindo de quem chamou.
+
+   Protegido por ADMIN_TOKEN. Sem essa variável no ambiente o endpoint fica
+   desligado, para não virar porta aberta para inflar conversões.            */
+app.post('/api/admin/reconciliar', async (req, res) => {
+  const esperado = process.env.ADMIN_TOKEN;
+  if (!esperado) return res.status(403).json({ erro: 'Reconciliação desativada: falta ADMIN_TOKEN.' });
+  if (req.get('x-admin-token') !== esperado) return res.status(401).json({ erro: 'Token inválido.' });
+
+  const { transacaoId, pedidoId, cliente, valor, quantidade, utms } = req.body || {};
+  if (!transacaoId || !pedidoId) {
+    return res.status(400).json({ erro: 'Informe transacaoId e pedidoId.' });
+  }
+
+  try {
+    if (!await consultarPago(transacaoId)) {
+      return res.status(409).json({ erro: 'A ZuckPay não confirma essa transação como paga.' });
+    }
+  } catch (e) {
+    return res.status(502).json({ erro: `Não consegui consultar a ZuckPay: ${e.message}` });
+  }
+
+  const pedidos = lerPedidos();
+  const pedido = pedidos[pedidoId] || {
+    pedidoId,
+    transacaoId,
+    valor: Number(valor) || PRECO + FRETE,
+    quantidade: Math.max(1, Number(quantidade) || 1),
+    metodo: 'pix',
+    cliente: cliente || {},
+    utms: utms || {},
+    criadoEm: new Date().toISOString(),
+    recuperadoManualmente: true,
+  };
+
+  if (pedido.conversaoEnviada) {
+    return res.json({ ok: true, jaEnviado: true, pedidoId });
+  }
+
+  pedido.pago = true;
+  pedido.pagoEm = pedido.pagoEm || new Date().toISOString();
+  pedidos[pedidoId] = pedido;
+
+  await marcarConversao(pedido);
+  salvarPedidos(pedidos);
+
+  console.log(`[reconciliado] ${pedidoId} — conversão ${pedido.conversaoEnviada ? 'enviada' : 'AINDA pendente'}`);
+  res.json({ ok: true, pedidoId, conversaoEnviada: !!pedido.conversaoEnviada });
 });
 
 /* ---------- Só para TESTE: marca um pedido como pago manualmente ---------- */
@@ -360,7 +452,7 @@ if (NA_VERCEL) {
   module.exports = app;
 } else app.listen(PORT, () => {
   console.log(`\n  Casa das Ofertas rodando em http://localhost:${PORT}`);
-  console.log(`  Produto: R$ ${PRECO.toFixed(2).replace('.', ',')}`);
+  console.log(`  Produto: R$ ${PRECO.toFixed(2).replace('.', ',')} + Frete: R$ ${FRETE.toFixed(2).replace('.', ',')}`);
   if (modoSimulado()) {
     console.log('  ⚠️  MODO SIMULADO — sem credenciais ZuckPay no .env. Os PIX gerados NÃO são reais.\n');
   } else {
