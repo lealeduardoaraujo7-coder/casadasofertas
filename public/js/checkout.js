@@ -9,10 +9,13 @@ const etapas = {
 };
 
 const PRECO = 68.90;
-const FRETE = 10.00; // fixo, qualquer CEP
+const FRETE = 19.90; // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 
 let quantidade = 1;
+// O frete só entra no resumo depois que o CEP é informado: antes disso o cliente
+// não tem como saber de onde veio o valor.
+let freteConfirmado = false;
 let dadosCliente = null;
 const metodo = 'pix';
 let pedidoId = null;
@@ -33,8 +36,19 @@ function pintarQuantidade() {
   $('qtdValor').textContent = quantidade;
   $('valorItem').textContent = real(subtotal);
   $('valorSubtotal').textContent = real(subtotal);
-  $('valorFrete').textContent = real(FRETE);
-  $('valorTotal').textContent = real(total);
+
+  if (freteConfirmado) {
+    $('valorFrete').textContent = real(FRETE);
+    $('valorFrete').className = 'text-ink font-semibold';
+    $('valorTotal').textContent = real(total);
+  } else {
+    // Deixa claro que falta calcular, em vez de esconder que existe frete.
+    $('valorFrete').textContent = 'informe o CEP';
+    $('valorFrete').className = 'text-muted text-[12px]';
+    $('valorTotal').textContent = real(subtotal);
+  }
+  // Na etapa de pagamento o valor é sempre o cobrado de verdade, com frete —
+  // o CEP é obrigatório para chegar até lá.
   $('totalPagamento').textContent = real(total);
   $('qtdMenos').disabled = quantidade <= 1;
   $('qtdMais').disabled = quantidade >= QTD_MAXIMA;
@@ -77,6 +91,8 @@ function mostrarFrete(destino) {
   cx.hidden = false;
   cx.className = 'text-[13px] -mt-1 mb-3 flex items-center gap-1.5 text-success font-semibold';
   cx.innerHTML = `${ICONE_OK}<span>${destino ? `Entrega para ${destino} · ` : ''}Frete ${real(FRETE)} · até 7 dias úteis</span>`;
+  freteConfirmado = true;
+  pintarQuantidade(); // agora o resumo lá em cima pode mostrar o frete e o total
 }
 
 function erroFrete(msg) {
@@ -84,6 +100,10 @@ function erroFrete(msg) {
   cx.hidden = false;
   cx.className = 'text-[13px] -mt-1 mb-3 flex items-center gap-1.5 text-brandDk font-semibold';
   cx.textContent = msg;
+  // CEP inválido volta o resumo ao estado sem frete, para não mostrar um total
+  // baseado num endereço que não existe.
+  freteConfirmado = false;
+  pintarQuantidade();
 }
 
 $('cep').addEventListener('blur', async () => {

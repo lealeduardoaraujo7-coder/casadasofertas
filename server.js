@@ -14,7 +14,7 @@ const utmify = require('./utmify');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a ZuckPay cobra em REAIS
-const FRETE = Number(process.env.SHIPPING_PRICE || 10); // fixo, qualquer CEP
+const FRETE = Number(process.env.SHIPPING_PRICE || 19.9); // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
