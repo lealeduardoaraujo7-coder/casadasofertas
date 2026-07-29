@@ -298,7 +298,34 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
   const transacaoId = t.id || t.transactionId;
 
   const pedidos = lerPedidos();
-  const pedido = pedidos[ref] || Object.values(pedidos).find((p) => p.transacaoId === transacaoId);
+  let pedido = pedidos[ref] || Object.values(pedidos).find((p) => p.transacaoId === transacaoId);
+
+  // O /tmp da Vercel some quando a função hiberna, então o webhook quase sempre
+  // cai numa instância que não tem o pedido gravado. Antes o código só ignorava
+  // e respondia 200 — a ZuckPay dava a entrega por certa e a venda nunca era
+  // registrada na Utmify. Como o postback traz os dados do cliente e o valor,
+  // reconstruímos o pedido aqui em vez de perder a conversão.
+  if (!pedido && ref && statusPago(status)) {
+    const valorRecebido = Number(t.valor ?? t.amount ?? 0);
+    pedido = {
+      pedidoId: ref,
+      transacaoId,
+      valor: valorRecebido > 0 ? valorRecebido : PRECO,
+      quantidade: valorRecebido > 0 ? Math.max(1, Math.round(valorRecebido / PRECO)) : 1,
+      metodo: 'pix',
+      cliente: {
+        nome: t.nome || t.customer?.name || null,
+        email: t.email || t.customer?.email || null,
+        cpf: t.cpf || t.customer?.document || null,
+        telefone: t.telefone || t.customer?.phone || null,
+      },
+      utms: t.trackingParameters || {},
+      criadoEm: new Date().toISOString(),
+      reconstruido: true,
+    };
+    pedidos[ref] = pedido;
+    console.warn(`[webhook zuckpay] pedido ${ref} não estava no /tmp — reconstruído do postback.`);
+  }
 
   if (pedido && statusPago(status)) {
     pedido.pago = true;
@@ -308,6 +335,10 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
     await marcarConversao(pedido);
     salvarPedidos(pedidos);
     console.log(`[pago via webhook] ${pedido.pedidoId}`);
+  } else if (!pedido) {
+    console.error(`[webhook zuckpay] pedido não encontrado (ref=${ref}, transacao=${transacaoId}) — nada enviado.`);
+  } else {
+    console.log(`[webhook zuckpay] ${pedido.pedidoId} com status "${status}" — ignorado (só PAID conta).`);
   }
 
   res.sendStatus(200);
