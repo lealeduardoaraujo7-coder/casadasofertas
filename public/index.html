@@ -148,17 +148,6 @@
         Estoque baixo · oferta termina em <span class="font-bold text-accent" id="countdown">00:15:00</span>
       </p>
 
-      <!-- Calculadora de frete: frete fixo pra qualquer CEP, só pra mostrar o valor antes do checkout. -->
-      <div class="mt-4 pt-4 border-t border-line">
-        <label class="text-[11px] font-bold tracking-wide text-muted" for="cepFrete">CALCULAR FRETE E PRAZO</label>
-        <div class="flex gap-2 mt-1.5">
-          <input type="text" id="cepFrete" inputmode="numeric" placeholder="00000-000" maxlength="9"
-            class="flex-1 min-w-0 border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
-          <button type="button" id="btnCalcularFrete" class="shrink-0 bg-ink text-white font-bold text-sm px-4 rounded-xl active:scale-[.98] transition">Calcular</button>
-        </div>
-        <p id="resultadoFrete" class="text-sm mt-2.5" hidden></p>
-      </div>
-
       <div class="grid grid-cols-2 gap-2.5 mt-4 pt-4 border-t border-line">
         <div class="bg-white border-2 border-brand/30 rounded-2xl p-3.5 flex flex-col items-center text-center gap-1">
           <span class="text-brand"><svg viewBox="0 0 24 24" class="ic w-6 h-6"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7a4 4 0 0 1 8 0"/></svg></span>
@@ -391,7 +380,6 @@ const PRODUTO = {
 
   // Somente Pix por enquanto: a rota de cartao da ZuckPay nao esta ligada.
   preco: { de: 'R$ 199,90', por: 'R$ 68,90', desconto: '65% OFF', pix: 'à vista no Pix', parcelas: 'pagamento via Pix, aprovado na hora' },
-  frete: 10.00, // fixo, qualquer CEP do Brasil
 
   // Os arquivos foram enviados em ordem invertida (o 1 tem o conteúdo do 7 e
   // assim por diante). A lista abaixo já está na ordem visual correta.
@@ -529,41 +517,6 @@ document.querySelectorAll('[data-email]').forEach((n) => n.textContent = PRODUTO
 // wa.me abre a conversa com a mensagem já escrita, faltando só o cliente enviar.
 const LINK_WHATS = `https://wa.me/${PRODUTO.whatsapp}?text=${encodeURIComponent(PRODUTO.whatsappMsg)}`;
 document.querySelectorAll('[data-whats]').forEach((n) => n.href = LINK_WHATS);
-
-/* --- calculadora de frete: fixo pra qualquer CEP, só valida e mostra o valor --- */
-const cepFreteInput = el('cepFrete');
-const resultadoFrete = el('resultadoFrete');
-cepFreteInput.addEventListener('input', () => {
-  cepFreteInput.value = cepFreteInput.value.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2');
-});
-el('btnCalcularFrete').addEventListener('click', async () => {
-  const cep = cepFreteInput.value.replace(/\D/g, '');
-  if (cep.length !== 8) {
-    resultadoFrete.hidden = false;
-    resultadoFrete.className = 'text-sm mt-2.5 text-brandDk font-semibold';
-    resultadoFrete.textContent = 'Digite um CEP válido com 8 números.';
-    return;
-  }
-  resultadoFrete.hidden = false;
-  resultadoFrete.className = 'text-sm mt-2.5 text-muted';
-  resultadoFrete.textContent = 'Calculando...';
-  const freteTxt = `R$ ${PRODUTO.frete.toFixed(2).replace('.', ',')}`;
-  try {
-    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-    const d = await r.json();
-    if (d.erro) {
-      resultadoFrete.className = 'text-sm mt-2.5 text-brandDk font-semibold';
-      resultadoFrete.textContent = 'CEP não encontrado. Confira os números.';
-      return;
-    }
-    resultadoFrete.className = 'text-sm mt-2.5 text-success font-semibold';
-    resultadoFrete.textContent = `Entrega para ${d.localidade}/${d.uf} · Frete ${freteTxt} · até 7 dias úteis`;
-  } catch {
-    // sem internet pra consultar o CEP: ainda dá pra informar o frete, que é fixo
-    resultadoFrete.className = 'text-sm mt-2.5 text-success font-semibold';
-    resultadoFrete.textContent = `Frete ${freteTxt} · até 7 dias úteis`;
-  }
-});
 Object.entries(PRODUTO.ctas).forEach(([k, v]) => {
   document.querySelectorAll(`[data-${k}]`).forEach((n) => n.textContent = v);
 });
