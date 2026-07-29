@@ -9,6 +9,7 @@ const etapas = {
 };
 
 const PRECO = 68.90;
+const FRETE = 10.00; // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 
 let quantidade = 1;
@@ -27,10 +28,12 @@ rastrear.iniciarCheckout();
 const real = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
 function pintarQuantidade() {
-  const total = PRECO * quantidade;
+  const subtotal = PRECO * quantidade;
+  const total = subtotal + FRETE;
   $('qtdValor').textContent = quantidade;
-  $('valorItem').textContent = real(total);
-  $('valorSubtotal').textContent = real(total);
+  $('valorItem').textContent = real(subtotal);
+  $('valorSubtotal').textContent = real(subtotal);
+  $('valorFrete').textContent = real(FRETE);
   $('valorTotal').textContent = real(total);
   $('totalPagamento').textContent = real(total);
   $('qtdMenos').disabled = quantidade <= 1;
