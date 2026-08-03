@@ -34,14 +34,14 @@ const BUMPS = [
     nome: 'Kit 12 Tatames 50x50 20mm Azul',
     descricao: 'Protege o piso e abafa o barulho na hora de treinar',
     preco: 59.70,
-    imagem: 'bump-tatame.jpg',
+    imagem: 'bump-tatame.webp',
   },
   {
     id: 'banco120',
     nome: 'Banco de Musculação Regulável 120cm',
     descricao: 'Suporta 300kg · abre o leque de exercícios com os halteres',
     preco: 189.90,
-    imagem: 'bump-banco.jpg',
+    imagem: 'bump-banco.webp',
   },
 ];
 
