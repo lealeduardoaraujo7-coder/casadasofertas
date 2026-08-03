@@ -126,7 +126,7 @@ function salvarPedidos(p) {
  * e a venda ficaria para sempre sem registro.
  */
 async function marcarConversao(pedido) {
-  if (pedido.conversaoEnviada) return;
+  if (pedido.conversaoEnviada) return { meta: true, utmify: true, jaEnviado: true };
 
   const [enviouMeta, enviouUtmify] = await Promise.all([
     meta.enviarCompra(pedido).catch((e) => { console.error('[meta] falhou:', e.message); return false; }),
@@ -143,6 +143,7 @@ async function marcarConversao(pedido) {
     const falhou = [!enviouMeta && 'Meta', !enviouUtmify && 'Utmify'].filter(Boolean).join(' e ');
     console.error(`[conversao] pedido ${pedido.pedidoId}: ${falhou} não confirmou — será reenviado.`);
   }
+  return { meta: enviouMeta, utmify: enviouUtmify };
 }
 
 function gerarId() {
@@ -550,11 +551,21 @@ app.post('/api/admin/reconciliar', async (req, res) => {
   pedido.pagoEm = pedido.pagoEm || new Date().toISOString();
   pedidos[pedidoId] = pedido;
 
-  await marcarConversao(pedido);
+  const resultado = await marcarConversao(pedido);
   salvarPedidos(pedidos);
 
   console.log(`[reconciliado] ${pedidoId} — conversão ${pedido.conversaoEnviada ? 'enviada' : 'AINDA pendente'}`);
-  res.json({ ok: true, pedidoId, conversaoEnviada: !!pedido.conversaoEnviada });
+  // Devolve quem aceitou e quem não: sem os logs de runtime à mão, é a única
+  // forma de saber qual dos dois recusou.
+  res.json({
+    ok: true,
+    pedidoId,
+    conversaoEnviada: !!pedido.conversaoEnviada,
+    meta: resultado.meta,
+    utmify: resultado.utmify,
+    valor: pedido.valor,
+    cliente: pedido.cliente?.email || null,
+  });
 });
 
 /* ---------- Só para TESTE: marca um pedido como pago manualmente ---------- */
