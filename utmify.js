@@ -38,6 +38,41 @@ function trackingParameters(utms = {}) {
 }
 
 /**
+ * Lista de itens do pedido: o produto principal e cada order bump marcado.
+ *
+ * O preço unitário vem gravado no pedido. Dividir o total pela quantidade só
+ * funcionava quando não havia frete nem bump — hoje inflaria o valor do item.
+ * Para pedidos antigos, sem esse campo, mantemos a divisão como estimativa.
+ */
+function montarProdutos(pedido, unidades, centavos) {
+  const bumps = Array.isArray(pedido.bumps) ? pedido.bumps : [];
+  const unitario = Number(pedido.precoUnitario) > 0
+    ? Math.round(Number(pedido.precoUnitario) * 100)
+    : Math.round(centavos / unidades);
+
+  return [
+    {
+      id: 'kit-halteres-6em1',
+      name: 'Kit Halteres Ajustavel 6 em 1',
+      planId: null,
+      planName: null,
+      // O checkout permite até 5 unidades: sem isso o relatório mostraria
+      // sempre 1 item com o valor do pedido inteiro.
+      quantity: unidades,
+      priceInCents: unitario,
+    },
+    ...bumps.map((b) => ({
+      id: b.id,
+      name: b.nome,
+      planId: null,
+      planName: null,
+      quantity: 1,
+      priceInCents: Math.round(Number(b.preco || 0) * 100),
+    })),
+  ];
+}
+
+/**
  * Envia (ou atualiza) um pedido na Utmify.
  * Nunca lança erro: uma falha de rastreamento não pode derrubar o pedido.
  * @param {object} pedido  registro salvo em server.js
@@ -68,16 +103,7 @@ async function enviarPedido(pedido, status) {
       document: c.cpf ? String(c.cpf).replace(/\D/g, '') : null,
       country: 'BR',
     },
-    products: [{
-      id: 'kit-halteres-6em1',
-      name: 'Kit Halteres Ajustavel 6 em 1',
-      planId: null,
-      planName: null,
-      // O checkout permite até 5 unidades: sem isso o relatório mostraria
-      // sempre 1 item com o valor do pedido inteiro.
-      quantity: unidades,
-      priceInCents: Math.round(centavos / unidades),
-    }],
+    products: montarProdutos(pedido, unidades, centavos),
     trackingParameters: trackingParameters(pedido.utms),
     commission: {
       totalPriceInCents: centavos,

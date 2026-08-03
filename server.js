@@ -17,6 +17,41 @@ const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a ZuckPay cobra em R
 const FRETE = Number(process.env.SHIPPING_PRICE || 19.9); // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
+
+/* ---------- Order bumps ----------
+   Ofertas extras marcadas no checkout. O preço mora AQUI e em nenhum outro
+   lugar: o navegador manda só quais ids foram marcados, senão daria para editar
+   o valor no console e comprar por R$ 1.
+
+   Para adicionar outro bump, basta acrescentar um item nesta lista e colocar a
+   imagem em public/img/ com o nome indicado. O checkout se monta sozinho.
+
+   `imagem` é servida por /img/:arquivo, que acha o arquivo por nome mesmo se a
+   extensão for outra (.webp, .png...).                                       */
+const BUMPS = [
+  {
+    id: 'tatame12',
+    nome: 'Kit 12 Tatames 50x50 20mm Azul',
+    descricao: 'Protege o piso e abafa o barulho na hora de treinar',
+    preco: 59.70,
+    imagem: 'bump-tatame.jpg',
+  },
+  {
+    id: 'banco120',
+    nome: 'Banco de Musculação Regulável 120cm',
+    descricao: 'Suporta 300kg · abre o leque de exercícios com os halteres',
+    preco: 189.90,
+    imagem: 'bump-banco.jpg',
+  },
+];
+
+/** Só os bumps que existem de verdade, sem repetir. */
+function bumpsEscolhidos(ids) {
+  if (!Array.isArray(ids)) return [];
+  return [...new Set(ids.map(String))]
+    .map((id) => BUMPS.find((b) => b.id === id))
+    .filter(Boolean);
+}
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
 // esse /tmp é temporário (some quando a função hiberna). Por isso mantemos um
 // cache em memória junto — e a confirmação real do pagamento sempre vem da
@@ -186,6 +221,14 @@ function urlDoWebhook(req) {
   return `${proto}://${host}/api/webhook/zuckpay`;
 }
 
+/* ---------- Catálogo dos order bumps ----------
+   O checkout busca daqui em vez de ter os preços escritos no JavaScript: assim
+   existe um lugar só para mudar valor, e o que o cliente vê é o que o servidor
+   vai cobrar.                                                                */
+app.get('/api/bumps', (req, res) => {
+  res.json({ bumps: BUMPS, frete: FRETE, preco: PRECO });
+});
+
 /* ---------- Cria o pedido (PIX ou cartão) ---------- */
 app.post('/api/pedidos', async (req, res) => {
   const c = req.body?.cliente || {};
@@ -201,7 +244,11 @@ app.post('/api/pedidos', async (req, res) => {
   if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > QTD_MAXIMA) {
     return res.status(400).json({ erro: `Quantidade deve ser entre 1 e ${QTD_MAXIMA}.` });
   }
-  const valorTotal = Number((PRECO * quantidade + FRETE).toFixed(2));
+  // Do corpo vem só a lista de ids; o preço sai do catálogo daqui.
+  const bumps = bumpsEscolhidos(req.body?.bumps);
+  const totalBumps = bumps.reduce((s, b) => s + b.preco, 0);
+
+  const valorTotal = Number((PRECO * quantidade + totalBumps + FRETE).toFixed(2));
   if (pagamento.metodo === 'cartao' && !pagamento.cartao?.numero) {
     return res.status(400).json({ erro: 'Dados do cartão não recebidos.' });
   }
@@ -209,7 +256,10 @@ app.post('/api/pedidos', async (req, res) => {
   const pedidoId = gerarId();
   const base = {
     valor: valorTotal,
-    descricao: quantidade > 1 ? `${DESCRICAO} (${quantidade}x)` : DESCRICAO,
+    descricao: [
+      quantidade > 1 ? `${DESCRICAO} (${quantidade}x)` : DESCRICAO,
+      ...bumps.map((b) => b.nome),
+    ].join(' + '),
     cliente: c,
     referencia: pedidoId,
     callbackUrl: urlDoWebhook(req),
@@ -225,6 +275,12 @@ app.post('/api/pedidos', async (req, res) => {
       cliente: c,
       valor: valorTotal,
       quantidade,
+      // Guardado no pedido para a Utmify listar cada item e o Meta somar certo.
+      bumps: bumps.map((b) => ({ id: b.id, nome: b.nome, preco: b.preco })),
+      // Sem isso a Utmify teria que adivinhar o preço unitário dividindo o
+      // total, o que passa a errar quando há bump ou frete no meio.
+      precoUnitario: PRECO,
+      frete: FRETE,
       metodo: pagamento.metodo,
       utms: req.body?.utms || {},
       criadoEm: new Date().toISOString(),
@@ -392,8 +448,12 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
       pedidoId: ref,
       transacaoId,
       valor: valorRecebido > 0 ? valorRecebido : PRECO + FRETE,
-      // desconta o frete fixo antes de estimar quantas unidades foram pagas
-      quantidade: valorRecebido > 0 ? Math.max(1, Math.round((valorRecebido - FRETE) / PRECO)) : 1,
+      // Estimativa: desconta o frete e divide pelo preço. Com order bump no
+      // pedido a conta infla, então limitamos ao máximo que o checkout vende —
+      // melhor errar para baixo do que reportar uma quantidade impossível.
+      quantidade: valorRecebido > 0
+        ? Math.min(QTD_MAXIMA, Math.max(1, Math.round((valorRecebido - FRETE) / PRECO)))
+        : 1,
       metodo: 'pix',
       cliente: {
         nome: t.nome || t.customer?.name || null,

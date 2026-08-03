@@ -50,6 +50,7 @@ async function enviarCompra(pedido) {
 
   const c = pedido.cliente || {};
   const partes = String(c.nome || '').trim().split(/\s+/);
+  const bumps = Array.isArray(pedido.bumps) ? pedido.bumps : [];
 
   const evento = {
     event_name: 'Purchase',
@@ -70,11 +71,13 @@ async function enviarCompra(pedido) {
     custom_data: {
       currency: 'BRL',
       value: pedido.valor,
-      content_ids: ['kit-halteres-6em1'],
+      // Os order bumps entram como itens próprios, senão o Meta otimiza a
+      // campanha achando que todo pedido tem só o produto principal.
+      content_ids: ['kit-halteres-6em1', ...bumps.map((b) => b.id)],
       content_name: 'Kit Halteres Ajustavel 6 em 1',
       content_type: 'product',
       // O checkout vende até 5 unidades: fixar 1 aqui distorcia o relatório.
-      num_items: Math.max(1, Number(pedido.quantidade) || 1),
+      num_items: Math.max(1, Number(pedido.quantidade) || 1) + bumps.length,
     },
   };
 

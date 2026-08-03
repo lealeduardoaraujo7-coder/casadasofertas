@@ -27,14 +27,61 @@ const so = (v) => v.replace(/\D/g, '');
 // já carregada e sem navegação em curso para cortar a requisição.
 rastrear.iniciarCheckout();
 
-/* ---------- Quantidade ---------- */
+/* ---------- Order bumps ----------
+   O catálogo vem de /api/bumps, não fica escrito aqui: preço só existe no
+   servidor, que é quem cobra. O navegador manda apenas os ids marcados.      */
 const real = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
+let bumpsDisponiveis = [];
+const bumpsMarcados = new Set();
+
+const totalBumps = () => bumpsDisponiveis
+  .filter((b) => bumpsMarcados.has(b.id))
+  .reduce((s, b) => s + Number(b.preco || 0), 0);
+
+async function carregarBumps() {
+  try {
+    const r = await fetch('/api/bumps');
+    if (!r.ok) return;
+    bumpsDisponiveis = (await r.json()).bumps || [];
+  } catch {
+    return; // sem bump o checkout segue normal
+  }
+  if (!bumpsDisponiveis.length) return;
+
+  $('bumpsLista').innerHTML = bumpsDisponiveis.map((b) => `
+    <label class="flex items-center gap-3 border-2 border-dashed border-brand/40 bg-brand/5 rounded-xl p-2.5 cursor-pointer" data-bump="${b.id}">
+      <input type="checkbox" class="w-5 h-5 shrink-0 accent-brand" data-bump-check="${b.id}">
+      <img src="/img/${b.imagem}" alt="" onerror="this.remove()"
+           class="w-12 h-12 object-contain rounded-lg bg-white shrink-0">
+      <span class="leading-tight min-w-0">
+        <span class="block text-[13px] font-bold text-ink">${b.nome}</span>
+        <span class="block text-[11px] text-muted">${b.descricao || ''}</span>
+        <span class="block text-[13px] font-extrabold text-brandDk mt-0.5">+ ${real(Number(b.preco))}</span>
+      </span>
+    </label>`).join('');
+
+  $('bumpsLista').querySelectorAll('[data-bump-check]').forEach((cx) => {
+    cx.addEventListener('change', () => {
+      const id = cx.getAttribute('data-bump-check');
+      if (cx.checked) bumpsMarcados.add(id); else bumpsMarcados.delete(id);
+      // Destaca o card escolhido para o cliente enxergar o que somou.
+      cx.closest('[data-bump]').classList.toggle('border-solid', cx.checked);
+      cx.closest('[data-bump]').classList.toggle('border-brand', cx.checked);
+      pintarQuantidade();
+    });
+  });
+
+  $('bumpsBox').hidden = false;
+}
+
+/* ---------- Quantidade ---------- */
+
 function pintarQuantidade() {
-  const subtotal = PRECO * quantidade;
+  const subtotal = PRECO * quantidade + totalBumps();
   const total = subtotal + FRETE;
   $('qtdValor').textContent = quantidade;
-  $('valorItem').textContent = real(subtotal);
+  $('valorItem').textContent = real(PRECO * quantidade);
   $('valorSubtotal').textContent = real(subtotal);
 
   if (freteConfirmado) {
@@ -62,6 +109,7 @@ $('qtdMais').addEventListener('click', () => {
   if (quantidade < QTD_MAXIMA) { quantidade++; pintarQuantidade(); }
 });
 pintarQuantidade();
+carregarBumps(); // busca o catálogo e repinta o resumo quando o cliente marcar
 
 /* ---------- Máscaras ---------- */
 function mascara(input, fn) {
@@ -220,6 +268,8 @@ $('btnFinalizar').addEventListener('click', async () => {
         cliente: dadosCliente,
         pagamento,
         quantidade,
+        // Só os ids: o preço de cada bump quem sabe é o servidor.
+        bumps: [...bumpsMarcados],
         // origem da campanha, para conferir a atribuição depois
         utms: JSON.parse(sessionStorage.getItem('utms') || '{}'),
       }),
