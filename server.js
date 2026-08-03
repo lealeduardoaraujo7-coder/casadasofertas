@@ -128,13 +128,21 @@ function salvarPedidos(p) {
 async function marcarConversao(pedido) {
   if (pedido.conversaoEnviada) return;
 
-  const [, enviouUtmify] = await Promise.all([
-    meta.enviarCompra(pedido).catch((e) => console.error('[meta] falhou:', e.message)),
+  const [enviouMeta, enviouUtmify] = await Promise.all([
+    meta.enviarCompra(pedido).catch((e) => { console.error('[meta] falhou:', e.message); return false; }),
     utmify.enviarPedido(pedido, 'paid'),
   ]);
 
-  if (enviouUtmify) pedido.conversaoEnviada = true;
-  else console.error(`[utmify] pedido ${pedido.pedidoId} segue pendente — será reenviado.`);
+  // A flag só fecha quando os DOIS aceitaram. Antes ela olhava apenas a Utmify:
+  // se o Meta falhasse, o reenvio era bloqueado e a venda nunca aparecia lá.
+  // Repetir é seguro — o Meta deduplica pelo event_id (= número do pedido) e a
+  // Utmify atualiza o mesmo orderId em vez de criar outro.
+  if (enviouMeta && enviouUtmify) {
+    pedido.conversaoEnviada = true;
+  } else {
+    const falhou = [!enviouMeta && 'Meta', !enviouUtmify && 'Utmify'].filter(Boolean).join(' e ');
+    console.error(`[conversao] pedido ${pedido.pedidoId}: ${falhou} não confirmou — será reenviado.`);
+  }
 }
 
 function gerarId() {
@@ -307,15 +315,24 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
   const corpo = req.body || {};
   console.log('[webhook zuckpay]', JSON.stringify(corpo));
 
-  // A assinatura só existe se houver um Webhook Secret gerado no painel.
-  // Com secret configurado, postback sem assinatura válida é recusado.
-  if (assinaturaConfigurada()) {
-    if (!verificarAssinatura(req.rawBody, req.get('X-ZuckPay-Signature'))) {
-      console.error('[webhook zuckpay] assinatura inválida — ignorado');
-      return res.sendStatus(401);
-    }
-  } else if (!modoSimulado()) {
-    console.warn('[webhook zuckpay] sem ZUCKPAY_WEBHOOK_SECRET: postback aceito SEM validação.');
+  // Caminho rápido: assinatura confere e seguimos direto.
+  //
+  // Quando NÃO confere, o código antigo recusava com 401 e a venda morria ali.
+  // Bastava o secret da Vercel estar diferente do painel — ou a ZuckPay mandar
+  // o postback sem o cabeçalho — para toda venda aprovada sumir, enquanto a
+  // pendente continuava certa (essa sai daqui, na criação do Pix).
+  //
+  // Agora, em vez de descartar, perguntamos à própria ZuckPay se a transação
+  // está paga. Continua seguro: quem decide é a API do gateway, não o corpo que
+  // chegou. Forjar exigiria um transactionId real e já pago da sua conta — que
+  // geraria a mesma conversão de qualquer forma.
+  const assinaturaOk = assinaturaConfigurada()
+    && verificarAssinatura(req.rawBody, req.get('X-ZuckPay-Signature'));
+
+  if (assinaturaConfigurada() && !assinaturaOk) {
+    console.warn('[webhook zuckpay] assinatura não confere — vou confirmar na API da ZuckPay antes de decidir.');
+  } else if (!assinaturaConfigurada() && !modoSimulado()) {
+    console.warn('[webhook zuckpay] sem ZUCKPAY_WEBHOOK_SECRET: confirmação virá da API da ZuckPay.');
   }
 
   // Formato oficial: { event, platform, transaction: {...} }. O postback do
@@ -325,6 +342,29 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
   const ref = t.external_id_client || t.external_id;
   const transacaoId = t.id || t.transactionId;
 
+  // "Está pago" só vale se a assinatura conferiu OU se a ZuckPay confirmar na
+  // API. Sem uma das duas coisas não registramos conversão nenhuma.
+  let confirmadoPago = statusPago(status);
+  if (confirmadoPago && !assinaturaOk && !modoSimulado()) {
+    if (!transacaoId) {
+      console.error('[webhook zuckpay] postback sem assinatura válida e sem id de transação — recusado.');
+      return res.sendStatus(401);
+    }
+    try {
+      confirmadoPago = await consultarPago(transacaoId);
+    } catch (e) {
+      // Não deu para confirmar agora: 500 faz a ZuckPay tentar de novo, o que é
+      // melhor do que dar a venda por perdida com um 200.
+      console.error('[webhook zuckpay] falha ao consultar a ZuckPay:', e.message);
+      return res.sendStatus(500);
+    }
+    if (!confirmadoPago) {
+      console.error(`[webhook zuckpay] a ZuckPay não confirma a transação ${transacaoId} como paga — recusado.`);
+      return res.sendStatus(401);
+    }
+    console.log(`[webhook zuckpay] transação ${transacaoId} confirmada direto na API (assinatura não conferiu).`);
+  }
+
   const pedidos = lerPedidos();
   let pedido = pedidos[ref] || Object.values(pedidos).find((p) => p.transacaoId === transacaoId);
 
@@ -333,7 +373,7 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
   // e respondia 200 — a ZuckPay dava a entrega por certa e a venda nunca era
   // registrada na Utmify. Como o postback traz os dados do cliente e o valor,
   // reconstruímos o pedido aqui em vez de perder a conversão.
-  if (!pedido && ref && statusPago(status)) {
+  if (!pedido && ref && confirmadoPago) {
     const valorRecebido = Number(t.valor ?? t.amount ?? 0);
     pedido = {
       pedidoId: ref,
@@ -356,7 +396,7 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
     console.warn(`[webhook zuckpay] pedido ${ref} não estava no /tmp — reconstruído do postback.`);
   }
 
-  if (pedido && statusPago(status)) {
+  if (pedido && confirmadoPago) {
     pedido.pago = true;
     pedido.pagoEm = new Date().toISOString();
     // Grava só depois do envio: marcarConversao atualiza conversaoEnviada e

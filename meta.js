@@ -19,6 +19,8 @@ const crypto = require('crypto');
 const PIXEL_ID = process.env.META_PIXEL_ID || '';
 const TOKEN = process.env.META_CAPI_TOKEN || '';
 const VERSAO = 'v21.0';
+// Igual ao UTMIFY_URL: permite apontar para um mock ao testar o fluxo local.
+const BASE = process.env.META_API_URL || `https://graph.facebook.com/${VERSAO}`;
 
 const ativo = () => !!(PIXEL_ID && TOKEN);
 
@@ -39,9 +41,12 @@ function telefoneE164(tel) {
  * Envia o evento de compra para o Meta.
  * Nunca lança erro: se falhar, apenas registra no log — uma falha de
  * rastreamento não pode derrubar a confirmação de um pedido.
+ * @returns {Promise<boolean>} true se o Meta aceitou (ou não há o que enviar)
  */
 async function enviarCompra(pedido) {
-  if (!ativo()) return;
+  // Sem credenciais não há o que enviar: devolve true para não travar o guard
+  // de reenvio de quem chama.
+  if (!ativo()) return true;
 
   const c = pedido.cliente || {};
   const partes = String(c.nome || '').trim().split(/\s+/);
@@ -68,21 +73,27 @@ async function enviarCompra(pedido) {
       content_ids: ['kit-halteres-6em1'],
       content_name: 'Kit Halteres Ajustavel 6 em 1',
       content_type: 'product',
-      num_items: 1,
+      // O checkout vende até 5 unidades: fixar 1 aqui distorcia o relatório.
+      num_items: Math.max(1, Number(pedido.quantidade) || 1),
     },
   };
 
   try {
-    const resp = await fetch(`https://graph.facebook.com/${VERSAO}/${PIXEL_ID}/events`, {
+    const resp = await fetch(`${BASE}/${PIXEL_ID}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: [evento], access_token: TOKEN }),
     });
     const texto = await resp.text();
-    if (!resp.ok) console.error('[meta capi] falhou:', resp.status, texto);
-    else console.log(`[meta capi] Purchase enviado — pedido ${pedido.pedidoId}`);
+    if (!resp.ok) {
+      console.error('[meta capi] falhou:', resp.status, texto);
+      return false;
+    }
+    console.log(`[meta capi] Purchase enviado — pedido ${pedido.pedidoId}`);
+    return true;
   } catch (e) {
     console.error('[meta capi] erro de rede:', e.message);
+    return false;
   }
 }
 
