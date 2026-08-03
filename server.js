@@ -430,10 +430,55 @@ app.post('/api/webhook/zuckpay', async (req, res) => {
 
    Protegido por ADMIN_TOKEN. Sem essa variável no ambiente o endpoint fica
    desligado, para não virar porta aberta para inflar conversões.            */
-app.post('/api/admin/reconciliar', async (req, res) => {
+function autorizadoAdmin(req, res, oQue) {
   const esperado = process.env.ADMIN_TOKEN;
-  if (!esperado) return res.status(403).json({ erro: 'Reconciliação desativada: falta ADMIN_TOKEN.' });
-  if (req.get('x-admin-token') !== esperado) return res.status(401).json({ erro: 'Token inválido.' });
+  if (!esperado) {
+    res.status(403).json({ erro: `${oQue} desativado: falta ADMIN_TOKEN no ambiente.` });
+    return false;
+  }
+  if (req.get('x-admin-token') !== esperado) {
+    res.status(401).json({ erro: 'Token inválido.' });
+    return false;
+  }
+  return true;
+}
+
+/* ---------- Mostra COMO o servidor está configurado ----------
+   Na Vercel as variáveis viram "Sensitive" e nem o painel mostra o valor, o que
+   deixa a gente adivinhando quando o rastreamento falha. Aqui expomos o estado
+   da configuração — nunca o conteúdo de um segredo, só se está presente e o
+   tamanho, mais o que dá para conferir a olho (a URL pública e o callback que
+   seria enviado à ZuckPay, que não são segredo).                              */
+app.get('/api/admin/diagnostico', (req, res) => {
+  if (!autorizadoAdmin(req, res, 'Diagnóstico')) return;
+
+  const presente = (v) => ({ definida: !!v, tamanho: v ? String(v).length : 0 });
+
+  res.json({
+    ambiente: NA_VERCEL ? 'vercel' : 'local',
+    modoSimulado: modoSimulado(),
+    publicUrl: process.env.PUBLIC_URL || null, // é público por natureza
+    callbackQueSeriaEnviado: urlDoWebhook(req),
+    // Arredondado igual ao cobrado de verdade, senão o ponto flutuante mostra
+    // 88.80000000000001 aqui e parece bug onde não há.
+    precoEFrete: { produto: PRECO, frete: FRETE, total1un: Number((PRECO + FRETE).toFixed(2)) },
+    zuckpay: {
+      clientId: presente(process.env.ZUCKPAY_CLIENT_ID),
+      clientSecret: presente(process.env.ZUCKPAY_CLIENT_SECRET),
+      webhookSecret: presente(process.env.ZUCKPAY_WEBHOOK_SECRET),
+      assinaturaExigida: assinaturaConfigurada(),
+    },
+    utmify: { token: presente(process.env.UTMIFY_API_TOKEN), ativo: utmify.ativo() },
+    meta: {
+      pixelId: process.env.META_PIXEL_ID || null, // já aparece no HTML da página
+      capiToken: presente(process.env.META_CAPI_TOKEN),
+      ativo: meta.ativo(),
+    },
+  });
+});
+
+app.post('/api/admin/reconciliar', async (req, res) => {
+  if (!autorizadoAdmin(req, res, 'Reconciliação')) return;
 
   const { transacaoId, pedidoId, cliente, valor, quantidade, utms } = req.body || {};
   if (!transacaoId || !pedidoId) {
