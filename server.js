@@ -43,6 +43,27 @@ const BUMPS = [
     preco: 189.90,
     imagem: 'bump-banco.webp',
   },
+  {
+    id: 'shaker600',
+    nome: 'Coqueteleira Shaker 600ml',
+    descricao: 'Com compartimentos para suplemento e cápsulas',
+    preco: 18.90,
+    imagem: 'bump-shaker.webp',
+  },
+  {
+    id: 'colchonete',
+    nome: 'Colchonete de Academia 90x40x2cm',
+    descricao: 'Para treino no chão sem machucar as costas',
+    preco: 24.00,
+    imagem: 'bump-colchonete.webp',
+  },
+  {
+    id: 'anilhas10',
+    nome: 'Par de Anilhas 10kg Emborrachadas',
+    descricao: 'Mais 20kg de carga para evoluir na progressão',
+    preco: 77.50,
+    imagem: 'bump-anilhas.webp',
+  },
 ];
 
 /** Só os bumps que existem de verdade, sem repetir. */
@@ -256,10 +277,13 @@ app.post('/api/pedidos', async (req, res) => {
   const pedidoId = gerarId();
   const base = {
     valor: valorTotal,
+    // Curta de propósito: juntar o nome de cada bump passava de 200 caracteres
+    // com o catálogo cheio, e esse campo tem limite no gateway. O detalhe de
+    // cada item vai para a Utmify, que é onde ele serve para alguma coisa.
     descricao: [
       quantidade > 1 ? `${DESCRICAO} (${quantidade}x)` : DESCRICAO,
-      ...bumps.map((b) => b.nome),
-    ].join(' + '),
+      bumps.length ? `+ ${bumps.length} item${bumps.length > 1 ? 's' : ''}` : '',
+    ].filter(Boolean).join(' '),
     cliente: c,
     referencia: pedidoId,
     callbackUrl: urlDoWebhook(req),
