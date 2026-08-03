@@ -240,7 +240,10 @@ $('formDados').addEventListener('submit', (e) => {
   etapas.pagamento.hidden = false;
   $('passo2').classList.add('ativo');
   rastrear.escolherPagamento('pix');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Rola até a etapa de pagamento, e não para o topo da página: acima dela fica
+  // o resumo do pedido, então mandar para o topo obrigava o cliente a descer de
+  // novo para achar o botão — atrito bem na hora de pagar.
+  etapas.pagamento.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 $('btnVoltar').addEventListener('click', () => {
@@ -280,9 +283,14 @@ $('btnFinalizar').addEventListener('click', async () => {
     pedidoId = d.pedidoId;
     $('passo3').classList.add('ativo');
     etapas.pagamento.hidden = true;
-    // valor já cobrado: não deixa mexer na quantidade depois do Pix gerado
+    // Valor já cobrado: nada que altere o total pode mudar depois do Pix gerado,
+    // senão a tela mostraria um valor diferente do que o Pix vai cobrar.
     $('qtdMenos').disabled = true;
     $('qtdMais').disabled = true;
+    document.querySelectorAll('[data-bump-check]').forEach((cx) => {
+      cx.disabled = true;
+      cx.closest('[data-bump]').classList.add('opacity-60', 'pointer-events-none');
+    });
 
     if (d.aprovado) {
       rastrear.comprar(pedidoId);
@@ -296,7 +304,10 @@ $('btnFinalizar').addEventListener('click', async () => {
       etapas.pix.hidden = false;
       iniciarPolling();
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Leva direto ao QR Code (ou à confirmação), não ao topo: o resumo do pedido
+    // fica acima e esconderia justamente o que o cliente precisa ver agora.
+    (d.aprovado ? etapas.ok : etapas.pix)
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     erro(cx, e.message);
     btn.disabled = false;
@@ -328,7 +339,7 @@ function iniciarPolling() {
         rastrear.comprar(pedidoId);
         etapas.pix.hidden = true;
         etapas.ok.hidden = false;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        etapas.ok.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } catch { /* tenta de novo no próximo ciclo */ }
   }, 5000);
