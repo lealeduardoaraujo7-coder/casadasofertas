@@ -164,7 +164,19 @@ function gerarId() {
  */
 function urlDoWebhook(req) {
   const configurado = String(process.env.PUBLIC_URL || '').trim().replace(/\/+$/, '');
-  if (configurado) return `${configurado}/api/webhook/zuckpay`;
+  if (configurado) {
+    // Um PUBLIC_URL com host diferente do que está servindo (o caso clássico é
+    // faltar o "www") faz a ZuckPay bater num redirect 308. Webhook não costuma
+    // seguir redirect: a confirmação é descartada e a venda aprovada nunca é
+    // registrada, enquanto a pendente segue normal. Já custou vendas aqui.
+    const hostServindo = req.get('x-forwarded-host') || req.get('host');
+    let hostConfigurado = '';
+    try { hostConfigurado = new URL(configurado).host; } catch { /* URL inválida */ }
+    if (hostServindo && hostConfigurado && hostServindo !== hostConfigurado) {
+      console.error(`[ATENCAO] PUBLIC_URL aponta para "${hostConfigurado}" mas quem responde é "${hostServindo}". A ZuckPay vai bater num redirect e a confirmação de pagamento pode se perder. Corrija o PUBLIC_URL para https://${hostServindo}`);
+    }
+    return `${configurado}/api/webhook/zuckpay`;
+  }
 
   const proto = req.get('x-forwarded-proto') || 'https';
   const host = req.get('x-forwarded-host') || req.get('host');
