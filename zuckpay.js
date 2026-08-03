@@ -201,15 +201,31 @@ async function cobrarCartao({ valor, descricao, cliente, referencia, callbackUrl
  * chama aqui controla o intervalo de polling — ver o limite em server.js.
  */
 async function consultarPago(transacaoId) {
-  if (modoSimulado()) return false;
+  const dados = await consultarTransacao(transacaoId);
+  return !!dados && statusPago(dados.status);
+}
+
+/**
+ * Busca a transação inteira na ZuckPay.
+ *
+ * Serve para recuperar uma venda cuja confirmação se perdeu: o registro traz o
+ * external_id_client, que é o nosso número de pedido, e sem ele a conversão
+ * entraria na Utmify com outro id e criaria um pedido duplicado em vez de
+ * atualizar o que está pendente.
+ *
+ * @returns {Promise<object|null>} dados da transação, ou null se não der
+ */
+async function consultarTransacao(transacaoId) {
+  if (modoSimulado()) return null;
 
   const url = `${BASE}${STATUS_PATH}?transactionId=${encodeURIComponent(transacaoId)}`;
   const r = await chamar(url, { headers: headers() });
   if (!r.ok) {
     console.error('[ZuckPay] erro ao consultar transação:', r.status, r.texto);
-    return false;
+    return null;
   }
-  return statusPago(r.dados.status);
+  // A resposta às vezes vem envelopada em { transaction: {...} }.
+  return r.dados?.transaction || r.dados || null;
 }
 
 /**
@@ -247,6 +263,6 @@ function verificarAssinatura(rawBody, signature) {
 }
 
 module.exports = {
-  criarPix, cobrarCartao, consultarPago, statusPago,
+  criarPix, cobrarCartao, consultarPago, consultarTransacao, statusPago,
   modoSimulado, assinaturaConfigurada, verificarAssinatura,
 };

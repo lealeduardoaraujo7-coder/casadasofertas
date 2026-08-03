@@ -4,7 +4,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const {
-  criarPix, cobrarCartao, consultarPago, statusPago,
+  criarPix, cobrarCartao, consultarPago, consultarTransacao, statusPago,
   modoSimulado, assinaturaConfigurada, verificarAssinatura,
 } = require('./zuckpay');
 const QRCode = require('qrcode');
@@ -492,28 +492,52 @@ app.get('/api/admin/diagnostico', (req, res) => {
 app.post('/api/admin/reconciliar', async (req, res) => {
   if (!autorizadoAdmin(req, res, 'Reconciliação')) return;
 
-  const { transacaoId, pedidoId, cliente, valor, quantidade, utms } = req.body || {};
-  if (!transacaoId || !pedidoId) {
-    return res.status(400).json({ erro: 'Informe transacaoId e pedidoId.' });
+  const { transacaoId, cliente, valor, quantidade, utms } = req.body || {};
+  if (!transacaoId) {
+    return res.status(400).json({ erro: 'Informe o transacaoId.' });
   }
 
+  // Busca a transação na ZuckPay: confirma que está paga e, de quebra, entrega
+  // o nosso número de pedido e os dados do cliente. Assim quem chama só precisa
+  // do id que aparece no painel, e a conversão atualiza o pedido pendente certo
+  // em vez de criar um duplicado na Utmify.
+  let daZuckpay;
   try {
-    if (!await consultarPago(transacaoId)) {
-      return res.status(409).json({ erro: 'A ZuckPay não confirma essa transação como paga.' });
-    }
+    daZuckpay = await consultarTransacao(transacaoId);
   } catch (e) {
     return res.status(502).json({ erro: `Não consegui consultar a ZuckPay: ${e.message}` });
   }
+  if (!daZuckpay) {
+    return res.status(404).json({ erro: 'Transação não encontrada na ZuckPay.' });
+  }
+  if (!statusPago(daZuckpay.status)) {
+    return res.status(409).json({ erro: `A ZuckPay diz que essa transação está "${daZuckpay.status}", não paga.` });
+  }
+
+  const pedidoId = req.body?.pedidoId
+    || daZuckpay.external_id_client
+    || daZuckpay.external_id;
+  if (!pedidoId) {
+    return res.status(422).json({ erro: 'A ZuckPay não devolveu o external_id_client; informe o pedidoId manualmente.' });
+  }
+
+  const valorZuck = Number(daZuckpay.valor ?? daZuckpay.amount ?? 0);
 
   const pedidos = lerPedidos();
   const pedido = pedidos[pedidoId] || {
     pedidoId,
     transacaoId,
-    valor: Number(valor) || PRECO + FRETE,
-    quantidade: Math.max(1, Number(quantidade) || 1),
+    valor: Number(valor) || (valorZuck > 0 ? valorZuck : PRECO + FRETE),
+    quantidade: Math.max(1, Number(quantidade)
+      || (valorZuck > 0 ? Math.round((valorZuck - FRETE) / PRECO) : 1)),
     metodo: 'pix',
-    cliente: cliente || {},
-    utms: utms || {},
+    cliente: cliente || {
+      nome: daZuckpay.nome || daZuckpay.customer?.name || null,
+      email: daZuckpay.email || daZuckpay.customer?.email || null,
+      cpf: daZuckpay.cpf || daZuckpay.customer?.document || null,
+      telefone: daZuckpay.telefone || daZuckpay.customer?.phone || null,
+    },
+    utms: utms || daZuckpay.trackingParameters || {},
     criadoEm: new Date().toISOString(),
     recuperadoManualmente: true,
   };
