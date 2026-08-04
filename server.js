@@ -30,20 +30,6 @@ const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
    extensão for outra (.webp, .png...).                                       */
 const BUMPS = [
   {
-    id: 'tatame12',
-    nome: 'Kit 12 Tatames 50x50 20mm Azul',
-    descricao: 'Protege o piso e abafa o barulho na hora de treinar',
-    preco: 59.70,
-    imagem: 'bump-tatame.webp',
-  },
-  {
-    id: 'banco120',
-    nome: 'Banco de Musculação Regulável 120cm',
-    descricao: 'Suporta 300kg · abre o leque de exercícios com os halteres',
-    preco: 189.90,
-    imagem: 'bump-banco.webp',
-  },
-  {
     id: 'shaker600',
     nome: 'Coqueteleira Shaker 600ml',
     descricao: 'Com compartimentos para suplemento e cápsulas',
@@ -57,6 +43,23 @@ const BUMPS = [
     preco: 24.00,
     imagem: 'bump-colchonete.webp',
   },
+];
+
+/* ---------- Upsell pós-compra ----------
+   Ofertas mostradas DEPOIS do pagamento confirmado. Ficam separadas dos bumps
+   de propósito: são os itens de ticket mais alto, que no checkout competiriam
+   com a decisão de comprar o produto principal.
+
+   Aceitar gera um Pix novo, porque o primeiro já foi pago. Não cobramos frete
+   de novo: vai na mesma caixa do pedido original.                            */
+const UPSELLS = [
+  {
+    id: 'banco120',
+    nome: 'Banco de Musculação Regulável 120cm',
+    descricao: 'Suporta 300kg · abre o leque de exercícios com os halteres',
+    preco: 189.90,
+    imagem: 'bump-banco.webp',
+  },
   {
     id: 'anilhas10',
     nome: 'Par de Anilhas 10kg Emborrachadas',
@@ -64,15 +67,24 @@ const BUMPS = [
     preco: 77.50,
     imagem: 'bump-anilhas.webp',
   },
+  {
+    id: 'tatame12',
+    nome: 'Kit 12 Tatames 50x50 20mm Azul',
+    descricao: 'Protege o piso e abafa o barulho na hora de treinar',
+    preco: 59.70,
+    imagem: 'bump-tatame.webp',
+  },
 ];
 
-/** Só os bumps que existem de verdade, sem repetir. */
-function bumpsEscolhidos(ids) {
+/** Só os itens que existem de verdade no catálogo dado, sem repetir. */
+function itensEscolhidos(ids, catalogo) {
   if (!Array.isArray(ids)) return [];
   return [...new Set(ids.map(String))]
-    .map((id) => BUMPS.find((b) => b.id === id))
+    .map((id) => catalogo.find((b) => b.id === id))
     .filter(Boolean);
 }
+
+const bumpsEscolhidos = (ids) => itensEscolhidos(ids, BUMPS);
 // Na Vercel o disco do projeto é somente-leitura: só /tmp aceita escrita, e
 // esse /tmp é temporário (some quando a função hiberna). Por isso mantemos um
 // cache em memória junto — e a confirmação real do pagamento sempre vem da
@@ -247,7 +259,73 @@ function urlDoWebhook(req) {
    existe um lugar só para mudar valor, e o que o cliente vê é o que o servidor
    vai cobrar.                                                                */
 app.get('/api/bumps', (req, res) => {
-  res.json({ bumps: BUMPS, frete: FRETE, preco: PRECO });
+  res.json({ bumps: BUMPS, upsells: UPSELLS, frete: FRETE, preco: PRECO });
+});
+
+/* ---------- Pix do upsell pós-compra ----------
+   Pedido novo e independente: o primeiro já foi pago, e com Pix não existe
+   cobrança em um clique. Vai sem frete, porque segue na mesma caixa.
+
+   Os dados do cliente vêm do navegador porque o /tmp da Vercel já pode ter
+   sumido — mas o valor continua saindo só do catálogo daqui.                */
+app.post('/api/upsell', async (req, res) => {
+  const c = req.body?.cliente || {};
+  const faltando = ['nome', 'email', 'cpf', 'telefone'].filter((k) => !c[k]);
+  if (faltando.length) {
+    return res.status(400).json({ erro: `Dados incompletos: ${faltando.join(', ')}.` });
+  }
+
+  const itens = itensEscolhidos(req.body?.itens, UPSELLS);
+  if (!itens.length) {
+    return res.status(400).json({ erro: 'Escolha ao menos um item.' });
+  }
+
+  const valorTotal = Number(itens.reduce((s, i) => s + i.preco, 0).toFixed(2));
+  const pedidoId = gerarId();
+
+  try {
+    const pix = await criarPix({
+      valor: valorTotal,
+      descricao: `Adicional do pedido${itens.length > 1 ? ` (${itens.length} itens)` : `: ${itens[0].nome}`}`,
+      cliente: c,
+      referencia: pedidoId,
+      callbackUrl: urlDoWebhook(req),
+      utms: req.body?.utms || {},
+    });
+
+    const pedidos = lerPedidos();
+    pedidos[pedidoId] = {
+      pedidoId,
+      cliente: c,
+      valor: valorTotal,
+      quantidade: 0,          // não leva o produto principal
+      bumps: itens.map((i) => ({ id: i.id, nome: i.nome, preco: i.preco })),
+      ehUpsell: true,
+      pedidoOriginal: req.body?.pedidoOriginal || null,
+      metodo: 'pix',
+      utms: req.body?.utms || {},
+      criadoEm: new Date().toISOString(),
+      transacaoId: pix.transacaoId,
+      pago: false,
+      simulado: pix.simulado,
+      frete: 0,
+    };
+    salvarPedidos(pedidos);
+
+    console.log(`[upsell] ${pedidoId} criado — ${itens.map((i) => i.id).join(', ')} = R$ ${valorTotal.toFixed(2)}`);
+    await utmify.enviarPedido(pedidos[pedidoId], 'waiting_payment');
+
+    res.json({
+      pedidoId,
+      valor: valorTotal,
+      pixCopiaECola: pix.pixCopiaECola,
+      qrCodeImagem: pix.qrCodeImagem,
+      simulado: pix.simulado,
+    });
+  } catch (e) {
+    console.error('[upsell] falhou:', e.message);
+    res.status(502).json({ erro: 'Não consegui gerar o Pix do adicional. Tente de novo.' });
+  }
 });
 
 /* ---------- Cria o pedido (PIX ou cartão) ---------- */

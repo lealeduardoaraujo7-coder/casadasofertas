@@ -72,12 +72,20 @@ async function enviarCompra(pedido) {
       currency: 'BRL',
       value: pedido.valor,
       // Os order bumps entram como itens próprios, senão o Meta otimiza a
-      // campanha achando que todo pedido tem só o produto principal.
-      content_ids: ['kit-halteres-6em1', ...bumps.map((b) => b.id)],
-      content_name: 'Kit Halteres Ajustavel 6 em 1',
+      // campanha achando que todo pedido tem só o produto principal. No upsell
+      // pós-compra o principal fica de fora: ele já foi contado no pedido pago
+      // antes, e repetir aqui inflaria a conversão.
+      content_ids: pedido.ehUpsell
+        ? bumps.map((b) => b.id)
+        : ['kit-halteres-6em1', ...bumps.map((b) => b.id)],
+      content_name: pedido.ehUpsell
+        ? bumps.map((b) => b.nome).join(' + ')
+        : 'Kit Halteres Ajustavel 6 em 1',
       content_type: 'product',
       // O checkout vende até 5 unidades: fixar 1 aqui distorcia o relatório.
-      num_items: Math.max(1, Number(pedido.quantidade) || 1) + bumps.length,
+      num_items: pedido.ehUpsell
+        ? bumps.length
+        : Math.max(1, Number(pedido.quantidade) || 1) + bumps.length,
     },
   };
 

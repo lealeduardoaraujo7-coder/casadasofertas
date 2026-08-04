@@ -46,6 +46,19 @@ function trackingParameters(utms = {}) {
  */
 function montarProdutos(pedido, unidades, centavos) {
   const bumps = Array.isArray(pedido.bumps) ? pedido.bumps : [];
+  const itemDeBump = (b) => ({
+    id: b.id,
+    name: b.nome,
+    planId: null,
+    planName: null,
+    quantity: 1,
+    priceInCents: Math.round(Number(b.preco || 0) * 100),
+  });
+
+  // Upsell pós-compra é um pedido só dos adicionais: o produto principal já foi
+  // cobrado no pedido anterior e listá-lo aqui contaria a venda duas vezes.
+  if (pedido.ehUpsell) return bumps.map(itemDeBump);
+
   const unitario = Number(pedido.precoUnitario) > 0
     ? Math.round(Number(pedido.precoUnitario) * 100)
     : Math.round(centavos / unidades);
@@ -61,14 +74,7 @@ function montarProdutos(pedido, unidades, centavos) {
       quantity: unidades,
       priceInCents: unitario,
     },
-    ...bumps.map((b) => ({
-      id: b.id,
-      name: b.nome,
-      planId: null,
-      planName: null,
-      quantity: 1,
-      priceInCents: Math.round(Number(b.preco || 0) * 100),
-    })),
+    ...bumps.map(itemDeBump),
   ];
 }
 

@@ -6,6 +6,8 @@ const etapas = {
   pagamento: $('etapaPagamento'),
   pix: $('etapaPix'),
   ok: $('etapaOk'),
+  upsell: $('etapaUpsell'),
+  upsellPix: $('etapaUpsellPix'),
 };
 
 const PRECO = 68.90;
@@ -39,11 +41,16 @@ const totalBumps = () => bumpsDisponiveis
   .filter((b) => bumpsMarcados.has(b.id))
   .reduce((s, b) => s + Number(b.preco || 0), 0);
 
+let upsellsDisponiveis = [];
+const upsellsMarcados = new Set();
+
 async function carregarBumps() {
   try {
     const r = await fetch('/api/bumps');
     if (!r.ok) return;
-    bumpsDisponiveis = (await r.json()).bumps || [];
+    const d = await r.json();
+    bumpsDisponiveis = d.bumps || [];
+    upsellsDisponiveis = d.upsells || [];
   } catch {
     return; // sem bump o checkout segue normal
   }
@@ -295,6 +302,7 @@ $('btnFinalizar').addEventListener('click', async () => {
     if (d.aprovado) {
       rastrear.comprar(pedidoId);
       etapas.ok.hidden = false;
+      mostrarUpsell();
     } else {
       $('idPedido').textContent = d.pedidoId;
       $('codigoPix').value = d.pixCopiaECola;
@@ -340,7 +348,115 @@ function iniciarPolling() {
         etapas.pix.hidden = true;
         etapas.ok.hidden = false;
         etapas.ok.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        mostrarUpsell();
       }
     } catch { /* tenta de novo no próximo ciclo */ }
+  }, 5000);
+}
+
+/* ---------- Upsell pós-compra ----------
+   Só entra depois do pagamento confirmado: a venda principal já está garantida,
+   então oferecer aqui não arrisca a conversão. Como o Pix já foi pago, aceitar
+   gera uma cobrança nova — não existe "um clique" com Pix.                   */
+const totalUpsell = () => upsellsDisponiveis
+  .filter((u) => upsellsMarcados.has(u.id))
+  .reduce((s, u) => s + Number(u.preco || 0), 0);
+
+function pintarUpsell() {
+  const t = totalUpsell();
+  $('upsellTotal').textContent = real(t);
+  $('btnUpsell').disabled = t <= 0;
+}
+
+function mostrarUpsell() {
+  if (!upsellsDisponiveis.length || !dadosCliente) return;
+
+  $('upsellLista').innerHTML = upsellsDisponiveis.map((u) => `
+    <label class="flex items-center gap-3 border border-line rounded-xl p-2.5 cursor-pointer" data-up="${u.id}">
+      <input type="checkbox" class="w-5 h-5 shrink-0 accent-brand" data-up-check="${u.id}">
+      <img src="/img/${u.imagem}" alt="" onerror="this.remove()"
+           class="w-12 h-12 object-contain rounded-lg bg-white shrink-0">
+      <span class="leading-tight min-w-0">
+        <span class="block text-[13px] font-bold text-ink">${u.nome}</span>
+        <span class="block text-[11px] text-muted">${u.descricao || ''}</span>
+        <span class="block text-[13px] font-extrabold text-brandDk mt-0.5">+ ${real(Number(u.preco))}</span>
+      </span>
+    </label>`).join('');
+
+  $('upsellLista').querySelectorAll('[data-up-check]').forEach((cx) => {
+    cx.addEventListener('change', () => {
+      const id = cx.getAttribute('data-up-check');
+      if (cx.checked) upsellsMarcados.add(id); else upsellsMarcados.delete(id);
+      cx.closest('[data-up]').classList.toggle('border-brand', cx.checked);
+      cx.closest('[data-up]').classList.toggle('bg-brand/5', cx.checked);
+      pintarUpsell();
+    });
+  });
+
+  pintarUpsell();
+  etapas.upsell.hidden = false;
+}
+
+$('btnRecusarUpsell')?.addEventListener('click', () => {
+  etapas.upsell.hidden = true;
+});
+
+$('btnUpsell')?.addEventListener('click', async () => {
+  const btn = $('btnUpsell');
+  const cxErro = $('upsellErro');
+  cxErro.hidden = true;
+  btn.disabled = true;
+  btn.textContent = 'GERANDO PIX...';
+
+  try {
+    const r = await fetch('/api/upsell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente: dadosCliente,
+        itens: [...upsellsMarcados],
+        pedidoOriginal: pedidoId,
+        utms: JSON.parse(sessionStorage.getItem('utms') || '{}'),
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.erro || 'Não consegui gerar o Pix.');
+
+    $('upsellQr').innerHTML = d.qrCodeImagem
+      ? `<img src="${d.qrCodeImagem}" alt="QR Code PIX" width="260" height="260" class="rounded-xl">`
+      : '<p class="text-muted text-sm">Use o código Copia e Cola abaixo.</p>';
+    $('upsellCodigo').value = d.pixCopiaECola;
+
+    etapas.upsell.hidden = true;
+    etapas.upsellPix.hidden = false;
+    etapas.upsellPix.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    acompanharUpsell(d.pedidoId);
+  } catch (e) {
+    cxErro.textContent = e.message;
+    cxErro.hidden = false;
+    btn.disabled = false;
+    btn.textContent = 'GERAR PIX DO ADICIONAL';
+  }
+});
+
+$('btnCopiarUpsell')?.addEventListener('click', async () => {
+  const campo = $('upsellCodigo');
+  campo.select();
+  try { await navigator.clipboard.writeText(campo.value); } catch { document.execCommand('copy'); }
+  const btn = $('btnCopiarUpsell');
+  btn.textContent = 'CÓDIGO COPIADO!';
+  setTimeout(() => { btn.textContent = 'COPIAR CÓDIGO PIX'; }, 2000);
+});
+
+function acompanharUpsell(id) {
+  const t = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/pedidos/${id}/status`);
+      if ((await r.json()).pago) {
+        clearInterval(t);
+        $('upsellStatus').className = 'flex items-center justify-center gap-2 bg-success/10 text-success rounded-xl py-3 mt-3 text-sm font-bold';
+        $('upsellStatus').textContent = 'Adicional confirmado! Vai junto do seu pedido.';
+      }
+    } catch { /* tenta de novo */ }
   }, 5000);
 }
