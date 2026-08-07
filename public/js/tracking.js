@@ -8,7 +8,7 @@
    UTMIFY_PIXEL_ID -> Painel da Utmify > Pixel > criar/copiar ID.
    ========================================================================== */
 const META_PIXEL_ID = '1780777813273982';
-const UTMIFY_PIXEL_ID = '';
+const UTMIFY_PIXEL_ID = '6a76586d14f8db05eb5cbc29';
 
 const PRODUTO_TRACK = {
   id: 'kit-halteres-6em1',
