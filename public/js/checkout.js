@@ -10,7 +10,7 @@ const etapas = {
   upsellPix: $('etapaUpsellPix'),
 };
 
-const PRECO = 68.90;
+const PRECO = 109.90;
 const FRETE = 19.90; // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 

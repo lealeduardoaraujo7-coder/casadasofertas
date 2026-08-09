@@ -13,7 +13,7 @@ const UTMIFY_PIXEL_ID = '6a76586d14f8db05eb5cbc29';
 const PRODUTO_TRACK = {
   id: 'kit-halteres-6em1',
   nome: 'Kit Halteres Ajustavel 6 em 1',
-  valor: 68.90,
+  valor: 109.90,
   moeda: 'BRL',
 };
 

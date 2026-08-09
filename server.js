@@ -13,7 +13,7 @@ const utmify = require('./utmify');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PRECO = Number(process.env.PRODUCT_PRICE || 68.9); // a ZuckPay cobra em REAIS
+const PRECO = Number(process.env.PRODUCT_PRICE || 109.9); // a ZuckPay cobra em REAIS
 const FRETE = Number(process.env.SHIPPING_PRICE || 19.9); // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 const DESCRICAO = 'Kit Halteres Ajustavel 6 em 1';
@@ -37,11 +37,11 @@ const BUMPS = [
     imagem: 'bump-shaker.webp',
   },
   {
-    id: 'colchonete',
-    nome: 'Colchonete de Academia 90x40x2cm',
-    descricao: 'Para treino no chão sem machucar as costas',
-    preco: 24.00,
-    imagem: 'bump-colchonete.webp',
+    id: 'bancoreto',
+    nome: 'Banco de Musculação Reto Dobrável',
+    descricao: 'Suporta 150kg · dobra e guarda embaixo da cama',
+    preco: 94.90,
+    imagem: 'bump-bancoreto.webp',
   },
 ];
 
