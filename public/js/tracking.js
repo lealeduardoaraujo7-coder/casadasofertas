@@ -1,14 +1,16 @@
 /* ============================================================================
-   RASTREAMENTO — Meta Pixel + Utmify
+   RASTREAMENTO — Meta Pixel + Utmify + Dracofy
    ----------------------------------------------------------------------------
    >>> COLE SEUS IDS AQUI. Deixando vazio, o rastreamento fica desligado. <<<
 
    META_PIXEL_ID   -> Gerenciador de Eventos do Meta > Fontes de dados > seu
                       pixel. É um número de 15 ou 16 dígitos.
    UTMIFY_PIXEL_ID -> Painel da Utmify > Pixel > criar/copiar ID.
+   DRACOFY_TOKEN   -> Painel da Dracofy > seu projeto > SDK > data-token.
    ========================================================================== */
 const META_PIXEL_ID = '1780777813273982';
 const UTMIFY_PIXEL_ID = '6a76586d14f8db05eb5cbc29';
+const DRACOFY_TOKEN = 'pt_2ee2bb32fbef08b794884ad72334da9a';
 
 const PRODUTO_TRACK = {
   id: 'kit-halteres-6em1',
@@ -56,6 +58,19 @@ const PRODUTO_TRACK = {
   s2.src = 'https://cdn.utmify.com.br/scripts/pixel/pixel.js';
   s2.async = true; s2.defer = true;
   document.head.appendChild(s2);
+})();
+
+/* ---------- Dracofy ----------
+   O SDK inicializa sozinho pelo data-token e captura o click_id do visitante.
+   Carregado por aqui, e não por uma tag em cada HTML, para o token morar num
+   lugar só — igual aos outros dois.                                          */
+(function () {
+  if (!DRACOFY_TOKEN) return;
+  const s = document.createElement('script');
+  s.src = 'https://cdn.dracofy.com.br/v1/index.js';
+  s.async = true;
+  s.setAttribute('data-token', DRACOFY_TOKEN);
+  document.head.appendChild(s);
 })();
 
 /* ---------- Eventos ---------- */
