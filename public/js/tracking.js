@@ -15,7 +15,7 @@ const DRACOFY_TOKEN = 'pt_2ee2bb32fbef08b794884ad72334da9a';
 const PRODUTO_TRACK = {
   id: 'kit-halteres-6em1',
   nome: 'Kit Halteres Ajustavel 6 em 1',
-  valor: 109.90,
+  valor: 6.00,
   moeda: 'BRL',
 };
 
