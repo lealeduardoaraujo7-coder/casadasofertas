@@ -84,9 +84,9 @@
       <div class="flex-1 leading-tight">
         <p class="font-bold text-sm">Kit Halteres Ajustável 6 em 1</p>
         <p class="text-muted text-xs mt-0.5">Halter + Barra + Kettlebell</p>
-        <p class="text-muted text-xs mt-0.5">R$ 6,00 cada</p>
+        <p class="text-muted text-xs mt-0.5">R$ 109,90 cada</p>
       </div>
-      <span class="font-extrabold text-sm whitespace-nowrap" id="valorItem">R$ 6,00</span>
+      <span class="font-extrabold text-sm whitespace-nowrap" id="valorItem">R$ 109,90</span>
     </div>
 
     <div class="flex items-center justify-between pt-3">
@@ -107,10 +107,10 @@
       <div id="bumpsLista" class="grid gap-2"></div>
     </div>
 
-    <div class="flex justify-between text-sm text-muted pt-2.5 mt-2.5 border-t border-line"><span>Subtotal</span><span class="text-ink font-semibold" id="valorSubtotal">R$ 6,00</span></div>
+    <div class="flex justify-between text-sm text-muted pt-2.5 mt-2.5 border-t border-line"><span>Subtotal</span><span class="text-ink font-semibold" id="valorSubtotal">R$ 109,90</span></div>
     <div class="flex justify-between text-sm text-muted pt-1"><span>Frete</span><span class="text-muted text-[12px]" id="valorFrete">informe o CEP</span></div>
     <div class="flex justify-between items-end pt-2.5 mt-2.5 border-t border-line">
-      <span class="font-bold">Total</span><span class="text-2xl font-extrabold" id="valorTotal">R$ 6,00</span>
+      <span class="font-bold">Total</span><span class="text-2xl font-extrabold" id="valorTotal">R$ 109,90</span>
     </div>
   </div>
 
@@ -179,7 +179,7 @@
 
     <div class="flex justify-between items-center border-t border-line pt-3 mt-4 mb-4">
       <span class="text-muted text-sm">Total a pagar</span>
-      <b class="text-2xl font-extrabold" id="totalPagamento">R$ 6,00</b>
+      <b class="text-2xl font-extrabold" id="totalPagamento">R$ 109,90</b>
     </div>
 
     <p class="bg-[#FFF1F1] text-brandDk border border-brandLt rounded-xl px-3 py-2.5 text-[13px] mb-3" id="erroPagamento" hidden></p>
@@ -221,25 +221,27 @@
     <a href="/" class="block w-full bg-buy text-white font-bold text-lg py-4 rounded-cta mt-5">VOLTAR PARA A LOJA</a>
   </div>
 
-  <!-- ETAPA 5: UPSELL PÓS-COMPRA — só aparece depois do pagamento aprovado -->
-  <div class="bg-white border-2 border-brand/40 rounded-2xl p-4 mb-3" id="etapaUpsell" hidden>
-    <p class="text-[11px] font-bold tracking-wide text-brandDk">APROVEITE ENQUANTO SEPARAMOS SEU PEDIDO</p>
-    <h2 class="font-bold text-lg mt-1">Quer adicionar algo?</h2>
-    <p class="text-muted text-[13px] mt-1">Vai na <b class="text-ink">mesma caixa</b>, sem frete a mais. É só pagar um Pix rapidinho.</p>
+  <!-- ETAPA 5: UPSELL PÓS-COMPRA — sobreposição de tela cheia, só aparece depois do pagamento aprovado -->
+  <div class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto" id="etapaUpsell" hidden>
+    <div class="bg-white border-2 border-brand/40 rounded-2xl p-4 w-full max-w-[440px] my-auto">
+      <p class="text-[11px] font-bold tracking-wide text-brandDk">APROVEITE ENQUANTO SEPARAMOS SEU PEDIDO</p>
+      <h2 class="font-bold text-lg mt-1">Quer adicionar algo?</h2>
+      <p class="text-muted text-[13px] mt-1">Vai na <b class="text-ink">mesma caixa</b>, sem frete a mais. É só pagar um Pix rapidinho.</p>
 
-    <div id="upsellLista" class="grid gap-2 mt-3"></div>
+      <div id="upsellLista" class="grid gap-2 mt-3"></div>
 
-    <div class="flex justify-between items-end pt-3 mt-3 border-t border-line">
-      <span class="font-bold text-sm">Total do adicional</span>
-      <span class="text-xl font-extrabold" id="upsellTotal">R$ 0,00</span>
+      <div class="flex justify-between items-end pt-3 mt-3 border-t border-line">
+        <span class="font-bold text-sm">Total do adicional</span>
+        <span class="text-xl font-extrabold" id="upsellTotal">R$ 0,00</span>
+      </div>
+
+      <p class="text-brandDk text-sm mt-2" id="upsellErro" hidden></p>
+      <button type="button" id="btnUpsell" disabled
+        class="w-full bg-buy text-white font-bold text-lg py-4 rounded-cta mt-3 disabled:opacity-40 active:scale-[.99] transition">
+        GERAR PIX DO ADICIONAL
+      </button>
+      <button type="button" id="btnRecusarUpsell" class="w-full text-muted text-sm py-3 mt-1">Não, obrigado</button>
     </div>
-
-    <p class="text-brandDk text-sm mt-2" id="upsellErro" hidden></p>
-    <button type="button" id="btnUpsell" disabled
-      class="w-full bg-buy text-white font-bold text-lg py-4 rounded-cta mt-3 disabled:opacity-40 active:scale-[.99] transition">
-      GERAR PIX DO ADICIONAL
-    </button>
-    <button type="button" id="btnRecusarUpsell" class="w-full text-muted text-sm py-3 mt-1">Não, obrigado</button>
   </div>
 
   <!-- ETAPA 6: PIX DO UPSELL -->
