@@ -52,6 +52,9 @@ const BUMPS = [
 
    Aceitar gera um Pix novo, porque o primeiro já foi pago. Não cobramos frete
    de novo: vai na mesma caixa do pedido original.                            */
+// 30% de desconto: o cliente já pagou o pedido principal, então o upsell
+// vem com o preço reduzido para incentivar a compra do adicional.
+const DESCONTO_UPSELL = 0.3;
 const UPSELLS = [
   {
     id: 'banco120',
@@ -74,7 +77,7 @@ const UPSELLS = [
     preco: 59.70,
     imagem: 'bump-tatame.webp',
   },
-];
+].map((u) => ({ ...u, preco: Number((u.preco * (1 - DESCONTO_UPSELL)).toFixed(2)) }));
 
 /** Só os itens que existem de verdade no catálogo dado, sem repetir. */
 function itensEscolhidos(ids, catalogo) {
