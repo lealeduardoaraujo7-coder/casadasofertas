@@ -395,10 +395,14 @@ function mostrarUpsell() {
 
   pintarUpsell();
   etapas.upsell.hidden = false;
+  etapas.upsell.classList.remove('hidden');
+  etapas.upsell.classList.add('flex');
 }
 
 $('btnRecusarUpsell')?.addEventListener('click', () => {
   etapas.upsell.hidden = true;
+  etapas.upsell.classList.add('hidden');
+  etapas.upsell.classList.remove('flex');
 });
 
 $('btnUpsell')?.addEventListener('click', async () => {
@@ -428,6 +432,8 @@ $('btnUpsell')?.addEventListener('click', async () => {
     $('upsellCodigo').value = d.pixCopiaECola;
 
     etapas.upsell.hidden = true;
+    etapas.upsell.classList.add('hidden');
+    etapas.upsell.classList.remove('flex');
     etapas.upsellPix.hidden = false;
     etapas.upsellPix.scrollIntoView({ behavior: 'smooth', block: 'start' });
     acompanharUpsell(d.pedidoId);
