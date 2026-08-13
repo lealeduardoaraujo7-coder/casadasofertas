@@ -11,7 +11,7 @@ const etapas = {
 };
 
 const PRECO = 6.00;
-const FRETE = 19.90; // fixo, qualquer CEP
+const FRETE = 0; // fixo, qualquer CEP
 const QTD_MAXIMA = 5;
 
 let quantidade = 1;
